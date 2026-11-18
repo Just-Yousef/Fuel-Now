@@ -1,4 +1,5 @@
 """Sign up, sign in, sign out, email verification, password reset, profile."""
+import secrets
 import smtplib
 from email.message import EmailMessage
 
@@ -28,6 +29,7 @@ from models import (
     ROLE_MECHANIC,
     ROLE_STATION,
     STATUS_APPROVED,
+    STATUS_DEACTIVATED,
     STATUS_PENDING,
     Mechanic,
     Station,
@@ -601,6 +603,53 @@ def account():
                 flash("Administrator two-factor authentication disabled.", "success")
             else:
                 flash("This action is only available to administrators.", "error")
+
+        elif action == "delete_account":
+            if current_user.role == ROLE_ADMIN:
+                active_admin_count = User.query.filter_by(
+                    role=ROLE_ADMIN, status=STATUS_APPROVED
+                ).count()
+                if active_admin_count <= 1:
+                    flash("The last administrator account cannot be deleted.", "error")
+                else:
+                    flash("Administrator accounts are deleted through the admin panel.", "error")
+            else:
+                current_pw = request.form.get("delete_password") or ""
+                confirmation = (request.form.get("delete_confirmation") or "").strip()
+                if confirmation != "DELETE":
+                    flash("Type DELETE to confirm account deletion.", "error")
+                elif not current_user.check_password(current_pw):
+                    current_app.logger.warning(
+                        "Failed account deletion (bad password) user_id=%s",
+                        current_user.id,
+                    )
+                    flash("Current password is incorrect.", "error")
+                else:
+                    deleted_email = f"deleted-{current_user.id}@deleted.local"
+                    current_user.email = deleted_email
+                    current_user.full_name = "Deleted account"
+                    current_user.phone = None
+                    current_user.status = STATUS_DEACTIVATED
+                    current_user.is_active_flag = False
+                    current_user.email_verified = False
+                    current_user.email_verified_at = None
+                    current_user.latitude = None
+                    current_user.longitude = None
+                    current_user.location_updated_at = None
+                    current_user.admin_totp_secret = None
+                    current_user.admin_totp_enabled = False
+                    current_user.set_password(secrets.token_urlsafe(32))
+                    if current_user.station is not None:
+                        current_user.station.status = STATUS_DEACTIVATED
+                        current_user.station.is_open = False
+                    if current_user.mechanic is not None:
+                        current_user.mechanic.status = STATUS_DEACTIVATED
+                        current_user.mechanic.available = False
+                    db.session.commit()
+                    session_tokens.revoke_token(session_tokens.current_token())
+                    logout_user()
+                    flash("Your account has been deleted and signed out.", "info")
+                    return redirect(url_for("public.index"))
 
         elif action == "password":
             current_pw = request.form.get("current_password") or ""

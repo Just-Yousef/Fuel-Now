@@ -88,6 +88,28 @@
     {% endif %}
 
     <div class="card mt-2">
+      <h2>Delete account</h2>
+      <p class="muted">Deactivate this account and remove its personal profile data. Historical orders and requests are retained.</p>
+      {% if current_user.role == 'admin' %}
+      <p class="muted">The last administrator cannot delete their account.</p>
+      {% else %}
+      <form method="post" class="mt-1">
+        {{ csrf_field() }}
+        <input type="hidden" name="action" value="delete_account">
+        <div class="field">
+          <label for="delete_password">Current password</label>
+          <input type="password" id="delete_password" name="delete_password" required autocomplete="current-password">
+        </div>
+        <div class="field">
+          <label for="delete_confirmation">Type DELETE to confirm</label>
+          <input type="text" id="delete_confirmation" name="delete_confirmation" required autocomplete="off">
+        </div>
+        <button class="btn small danger" type="submit">Delete my account</button>
+      </form>
+      {% endif %}
+    </div>
+
+    <div class="card mt-2">
       <h2>Change password</h2>
       <form method="post">
   {{ csrf_field() }}

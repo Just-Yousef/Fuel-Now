@@ -255,6 +255,34 @@ def test_admin_can_approve_and_deactivate(app, client):
     assert denied.status_code == 403
 
 
+def test_account_deletion_requires_confirmation_and_password(app, client):
+    driver = make_user(email="delete-me@example.com", role=ROLE_DRIVER, full_name="Delete Me")
+    login(client, driver.email)
+
+    wrong_confirmation = client.post(
+        "/account",
+        data={"action": "delete_account", "delete_password": PASSWORD, "delete_confirmation": "NO"},
+        follow_redirects=True,
+    )
+    assert wrong_confirmation.status_code == 200
+    with app.app_context():
+        assert db.session.get(User, driver.id).status == "approved"
+
+    deleted = client.post(
+        "/account",
+        data={"action": "delete_account", "delete_password": PASSWORD, "delete_confirmation": "DELETE"},
+        follow_redirects=True,
+    )
+    assert deleted.status_code == 200
+
+    with app.app_context():
+        saved = db.session.get(User, driver.id)
+        assert saved.status == "deactivated"
+        assert not saved.is_active
+        assert saved.full_name == "Deleted account"
+        assert saved.email == f"deleted-{driver.id}@deleted.local"
+
+
 def test_admin_status_change_is_recorded(app, client):
     admin = make_user(email="audit-admin@example.com", role=ROLE_ADMIN, full_name="Audit Admin")
     driver = make_user(email="audit-driver@example.com", role=ROLE_DRIVER, full_name="Audit Driver")
