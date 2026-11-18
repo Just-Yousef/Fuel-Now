@@ -264,6 +264,15 @@ class Station(db.Model):
     orders = db.relationship(
         "FuelOrder", back_populates="station", cascade="all, delete-orphan"
     )
+    reviews = db.relationship(
+        "StationReview", back_populates="station", cascade="all, delete-orphan"
+    )
+
+    @property
+    def average_rating(self) -> float | None:
+        if not self.reviews:
+            return None
+        return round(sum(review.rating for review in self.reviews) / len(self.reviews), 1)
 
     @property
     def is_operational(self) -> bool:
@@ -322,6 +331,15 @@ class Mechanic(db.Model):
     requests = db.relationship(
         "ServiceRequest", back_populates="mechanic", cascade="all, delete-orphan"
     )
+    reviews = db.relationship(
+        "MechanicReview", back_populates="mechanic", cascade="all, delete-orphan"
+    )
+
+    @property
+    def average_rating(self) -> float | None:
+        if not self.reviews:
+            return None
+        return round(sum(review.rating for review in self.reviews) / len(self.reviews), 1)
 
     @property
     def is_listed(self) -> bool:
@@ -358,6 +376,7 @@ class FuelOrder(db.Model):
 
     driver = db.relationship("User", foreign_keys=[driver_id])
     station = db.relationship("Station", back_populates="orders")
+    review = db.relationship("StationReview", back_populates="order", uselist=False, cascade="all, delete-orphan")
 
     @property
     def status_label(self) -> str:
@@ -394,6 +413,7 @@ class ServiceRequest(db.Model):
 
     driver = db.relationship("User", foreign_keys=[driver_id])
     mechanic = db.relationship("Mechanic", back_populates="requests")
+    review = db.relationship("MechanicReview", back_populates="request", uselist=False, cascade="all, delete-orphan")
 
     @property
     def status_label(self) -> str:
@@ -405,3 +425,40 @@ class ServiceRequest(db.Model):
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<ServiceRequest {self.reference} {self.status}>"
+
+
+# --------------------------------------------------------------------------- #
+# Driver reviews
+# --------------------------------------------------------------------------- #
+class StationReview(db.Model):
+    __tablename__ = "station_reviews"
+    __table_args__ = (db.UniqueConstraint("order_id", name="uq_station_review_order"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey("fuel_orders.id"), nullable=False, unique=True, index=True)
+    station_id = db.Column(db.Integer, db.ForeignKey("stations.id"), nullable=False, index=True)
+    driver_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    rating = db.Column(db.Integer, nullable=False)
+    comment = db.Column(db.String(500))
+    created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
+
+    order = db.relationship("FuelOrder", back_populates="review")
+    station = db.relationship("Station", back_populates="reviews")
+    driver = db.relationship("User", foreign_keys=[driver_id])
+
+
+class MechanicReview(db.Model):
+    __tablename__ = "mechanic_reviews"
+    __table_args__ = (db.UniqueConstraint("request_id", name="uq_mechanic_review_request"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    request_id = db.Column(db.Integer, db.ForeignKey("service_requests.id"), nullable=False, unique=True, index=True)
+    mechanic_id = db.Column(db.Integer, db.ForeignKey("mechanics.id"), nullable=False, index=True)
+    driver_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    rating = db.Column(db.Integer, nullable=False)
+    comment = db.Column(db.String(500))
+    created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
+
+    request = db.relationship("ServiceRequest", back_populates="review")
+    mechanic = db.relationship("Mechanic", back_populates="reviews")
+    driver = db.relationship("User", foreign_keys=[driver_id])

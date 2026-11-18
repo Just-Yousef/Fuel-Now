@@ -43,6 +43,30 @@
           </p>
         {% endif %}
 
+        {% if service_request.status == 'completed' %}
+          {% if service_request.review %}
+            <p class="mt-2 muted" style="font-size:.85rem">Your rating: <b>{{ service_request.review.rating }} / 5</b>{% if service_request.review.comment %} — {{ service_request.review.comment }}{% endif %}</p>
+          {% else %}
+            <form method="post" action="{{ url_for('driver.review_request', request_id=service_request.id) }}" class="mt-2">
+  {{ csrf_field() }}
+              <div class="field-row">
+                <div class="field">
+                  <label for="request_rating_{{ service_request.id }}">Rating</label>
+                  <select id="request_rating_{{ service_request.id }}" name="rating" required>
+                    <option value="">Choose</option>
+                    {% for rating in range(1, 6) %}<option value="{{ rating }}">{{ rating }} / 5</option>{% endfor %}
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="request_comment_{{ service_request.id }}">Review (optional)</label>
+                  <input type="text" id="request_comment_{{ service_request.id }}" name="comment" maxlength="500">
+                </div>
+              </div>
+              <button class="btn small secondary" type="submit">Submit review</button>
+            </form>
+          {% endif %}
+        {% endif %}
+
         <div class="flex-between mt-2">
           <div class="muted" style="font-size:.82rem">
             Mechanic phone: {{ service_request.mechanic.user.phone or 'not provided' }}

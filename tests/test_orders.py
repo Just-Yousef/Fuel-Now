@@ -1,6 +1,6 @@
 """Core flow: a driver places a fuel order and a station moves it along."""
 from extensions import db
-from models import FuelOrder, FuelProduct
+from models import FuelOrder, FuelProduct, StationReview
 from tests.conftest import (
     DRIVER_LAT,
     DRIVER_LNG,
@@ -148,6 +148,54 @@ def test_order_rejected_for_unapproved_station(app, client, driver):
     assert b"not available for orders" in response.data
     with app.app_context():
         assert FuelOrder.query.count() == 0
+
+
+def test_completed_order_can_be_reviewed_once(app, client, driver):
+    with app.app_context():
+        station = make_station(owner_email="review-station@example.com")
+        station_id = station.id
+
+    login(client, driver.email)
+    assert client.get("/driver/").status_code == 200
+    place_order(client, station_id)
+
+    with app.app_context():
+        order = FuelOrder.query.one()
+        order_id = order.id
+
+    client.post("/logout")
+    login(client, "review-station@example.com")
+    for status in ("accepted", "fueling", "completed"):
+        response = client.post(
+            f"/station/orders/{order_id}/status",
+            data={"status": status},
+            follow_redirects=True,
+        )
+        assert response.status_code == 200
+
+    client.post("/logout")
+    login(client, driver.email)
+
+    first = client.post(
+        f"/driver/orders/{order_id}/review",
+        data={"rating": "5", "comment": "Fast and professional"},
+    )
+    assert first.status_code == 302
+    with client.session_transaction() as browser_session:
+        flashes = browser_session.get("_flashes", [])
+        assert ("success", "Thank you. Your station review was submitted.") in flashes
+
+    duplicate = client.post(
+        f"/driver/orders/{order_id}/review",
+        data={"rating": "1", "comment": "Changed my mind"},
+    )
+    assert duplicate.status_code == 302
+
+    with app.app_context():
+        reviews = StationReview.query.filter_by(order_id=order_id).all()
+        assert len(reviews) == 1
+        assert reviews[0].rating == 5
+        assert reviews[0].comment == "Fast and professional"
 
 
 def test_driver_can_cancel_own_pending_order(app, client, driver):

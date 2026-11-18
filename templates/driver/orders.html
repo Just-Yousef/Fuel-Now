@@ -65,6 +65,30 @@
           </p>
         {% endif %}
 
+        {% if order.status == 'completed' %}
+          {% if order.review %}
+            <p class="mt-2 muted" style="font-size:.85rem">Your rating: <b>{{ order.review.rating }} / 5</b>{% if order.review.comment %} — {{ order.review.comment }}{% endif %}</p>
+          {% else %}
+            <form method="post" action="{{ url_for('driver.review_order', order_id=order.id) }}" class="mt-2">
+  {{ csrf_field() }}
+              <div class="field-row">
+                <div class="field">
+                  <label for="order_rating_{{ order.id }}">Rating</label>
+                  <select id="order_rating_{{ order.id }}" name="rating" required>
+                    <option value="">Choose</option>
+                    {% for rating in range(1, 6) %}<option value="{{ rating }}">{{ rating }} / 5</option>{% endfor %}
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="order_comment_{{ order.id }}">Review (optional)</label>
+                  <input type="text" id="order_comment_{{ order.id }}" name="comment" maxlength="500">
+                </div>
+              </div>
+              <button class="btn small secondary" type="submit">Submit review</button>
+            </form>
+          {% endif %}
+        {% endif %}
+
         <div class="flex-between mt-2">
           <div class="muted" style="font-size:.82rem">
             Contact: {{ order.station.phone or 'not provided' }} · {{ order.station.opening_hours }}

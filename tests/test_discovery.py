@@ -1,6 +1,6 @@
 """Core flow: location-based discovery (nearby stations and mechanics)."""
 from extensions import db
-from models import ServiceRequest
+from models import MechanicReview, ServiceRequest
 from tests.conftest import (
     DRIVER_LAT,
     DRIVER_LNG,
@@ -161,6 +161,38 @@ def test_mechanic_request_flow_in_area(app, client, driver):
         )
         with app.app_context():
             assert db.session.get(ServiceRequest, requested_id).status == status
+
+
+def test_completed_mechanic_request_can_be_reviewed(app, client, driver):
+    with app.app_context():
+        mechanic = make_mechanic(business_name="Review Mech", lat=9.06, lng=7.49)
+        service_request = ServiceRequest(
+            reference="SR-REVIEW",
+            driver_id=driver.id,
+            mechanic_id=mechanic.id,
+            issue="Flat tyre",
+            vehicle="Test Car",
+            latitude=DRIVER_LAT,
+            longitude=DRIVER_LNG,
+            distance_km=1.0,
+            status="completed",
+        )
+        db.session.add(service_request)
+        db.session.commit()
+        request_id = service_request.id
+
+    login(client, driver.email)
+    response = client.post(
+        f"/driver/requests/{request_id}/review",
+        data={"rating": "4", "comment": "Helpful arrival"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+
+    with app.app_context():
+        review = MechanicReview.query.filter_by(request_id=request_id).one()
+        assert review.rating == 4
+        assert review.comment == "Helpful arrival"
 
 
 def test_mechanic_request_outside_service_area_is_rejected(app, client, driver):

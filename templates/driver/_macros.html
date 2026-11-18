@@ -25,7 +25,7 @@
   {% set station = result.entity %}
   <div class="listing">
     <div class="main">
-      <div class="title">{{ station.name }}</div>
+      <div class="title">{{ station.name }}{% if station.average_rating %} · ★ {{ '%.1f'|format(station.average_rating) }}{% endif %}</div>
       <div class="meta">
         {{ station.address }}, {{ station.city }} · Open {{ station.opening_hours }}
         {% if not station.is_open %}<span class="badge warn">Closed</span>{% endif %}
@@ -98,7 +98,7 @@
   {% set mechanic = result.entity %}
   <div class="listing">
     <div class="main">
-      <div class="title">{{ mechanic.business_name }}</div>
+      <div class="title">{{ mechanic.business_name }}{% if mechanic.average_rating %} · ★ {{ '%.1f'|format(mechanic.average_rating) }}{% endif %}</div>
       <div class="meta">
         {{ mechanic.specialties }} · {{ mechanic.city }}
         {% if mechanic.hourly_rate %}· {{ mechanic.hourly_rate|money }}/hr{% endif %}

@@ -41,15 +41,19 @@ from geo import (
 )
 from models import (
     ORDER_ACTIVE_STATUSES,
+    ORDER_COMPLETED,
     ORDER_PENDING,
     REQUEST_ACTIVE_STATUSES,
+    REQUEST_COMPLETED,
     REQUEST_PENDING,
     ROLE_DRIVER,
     STATUS_APPROVED,
     FuelOrder,
     FuelProduct,
     Mechanic,
+    MechanicReview,
     ServiceRequest,
+    StationReview,
     Station,
     utcnow,
 )
@@ -326,6 +330,48 @@ def cancel_order(order_id: int):
     return redirect(url_for("driver.orders"))
 
 
+@driver_bp.post("/orders/<int:order_id>/review")
+@role_required(ROLE_DRIVER)
+def review_order(order_id: int):
+    order = db.session.get(FuelOrder, order_id)
+    if order is None or order.driver_id != current_user.id:
+        flash("Order not found.", "error")
+        return redirect(url_for("driver.orders"))
+    if order.status != ORDER_COMPLETED:
+        flash("Only completed orders can be reviewed.", "error")
+        return redirect(url_for("driver.orders"))
+    if StationReview.query.filter_by(order_id=order.id).first() is not None:
+        flash("You have already reviewed this order.", "warning")
+        return redirect(url_for("driver.orders"))
+
+    try:
+        rating = int(request.form.get("rating", "0"))
+    except (TypeError, ValueError):
+        rating = 0
+    if rating not in range(1, 6):
+        flash("Choose a rating from 1 to 5.", "error")
+        return redirect(url_for("driver.orders"))
+
+    try:
+        comment = security.clean_text(
+            request.form.get("comment"), max_len=500, allow_newlines=True
+        ) or None
+    except security.FieldError as exc:
+        flash(str(exc), "error")
+        return redirect(url_for("driver.orders"))
+
+    db.session.add(StationReview(
+        order_id=order.id,
+        station_id=order.station_id,
+        driver_id=current_user.id,
+        rating=rating,
+        comment=comment,
+    ))
+    db.session.commit()
+    flash("Thank you. Your station review was submitted.", "success")
+    return redirect(url_for("driver.orders"))
+
+
 # --------------------------------------------------------------------------- #
 # Mechanic service requests
 # --------------------------------------------------------------------------- #
@@ -419,4 +465,46 @@ def cancel_request(request_id: int):
     service_request.updated_at = utcnow()
     db.session.commit()
     flash(f"Request {service_request.reference} cancelled.", "info")
+    return redirect(url_for("driver.requests_view"))
+
+
+@driver_bp.post("/requests/<int:request_id>/review")
+@role_required(ROLE_DRIVER)
+def review_request(request_id: int):
+    service_request = db.session.get(ServiceRequest, request_id)
+    if service_request is None or service_request.driver_id != current_user.id:
+        flash("Service request not found.", "error")
+        return redirect(url_for("driver.requests_view"))
+    if service_request.status != REQUEST_COMPLETED:
+        flash("Only completed requests can be reviewed.", "error")
+        return redirect(url_for("driver.requests_view"))
+    if MechanicReview.query.filter_by(request_id=service_request.id).first() is not None:
+        flash("You have already reviewed this request.", "warning")
+        return redirect(url_for("driver.requests_view"))
+
+    try:
+        rating = int(request.form.get("rating", "0"))
+    except (TypeError, ValueError):
+        rating = 0
+    if rating not in range(1, 6):
+        flash("Choose a rating from 1 to 5.", "error")
+        return redirect(url_for("driver.requests_view"))
+
+    try:
+        comment = security.clean_text(
+            request.form.get("comment"), max_len=500, allow_newlines=True
+        ) or None
+    except security.FieldError as exc:
+        flash(str(exc), "error")
+        return redirect(url_for("driver.requests_view"))
+
+    db.session.add(MechanicReview(
+        request_id=service_request.id,
+        mechanic_id=service_request.mechanic_id,
+        driver_id=current_user.id,
+        rating=rating,
+        comment=comment,
+    ))
+    db.session.commit()
+    flash("Thank you. Your mechanic review was submitted.", "success")
     return redirect(url_for("driver.requests_view"))
