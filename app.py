@@ -92,6 +92,27 @@ def create_app(config_name: str | None = None) -> Flask:
     db.init_app(app)
     login_manager.init_app(app)
 
+    with app.app_context():
+        db.create_all()
+
+        # SQLite does not alter existing tables for new model columns. Keep a
+        # small startup migration here so existing databases stay usable.
+        if db.engine.dialect.name == "sqlite":
+            from sqlalchemy import text
+
+            columns = {row["name"] for row in db.session.execute(
+                text("PRAGMA table_info(users)")
+            ).mappings()}
+            if "admin_totp_secret" not in columns:
+                db.session.execute(text(
+                    "ALTER TABLE users ADD COLUMN admin_totp_secret VARCHAR(64)"
+                ))
+            if "admin_totp_enabled" not in columns:
+                db.session.execute(text(
+                    "ALTER TABLE users ADD COLUMN admin_totp_enabled BOOLEAN NOT NULL DEFAULT 0"
+                ))
+            db.session.commit()
+
     # CSRF, security headers, CORS, input validators, log scrubbing.
     security.init_app(app)
 
