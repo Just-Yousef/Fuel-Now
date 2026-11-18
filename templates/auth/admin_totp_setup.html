@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Set up two-factor authentication · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="auth-shell">
+  <div class="card">
+    <h1>Set up two-factor authentication</h1>
+    <p class="muted">Add FuelNow to an authenticator app, then enter the six-digit code.</p>
+
+    <div class="field mt-2">
+      <label>Manual setup key</label>
+      <input type="text" value="{{ secret }}" readonly autocomplete="off">
+      <div class="help">Account: {{ current_user.email }} · Issuer: FuelNow</div>
+    </div>
+
+    {% if otpauth_uri %}
+    <p class="muted" style="font-size:.82rem">Authenticator apps can import this setup link:</p>
+    <input type="text" value="{{ otpauth_uri }}" readonly autocomplete="off">
+    {% endif %}
+
+    <form method="post" class="mt-2">
+      {{ csrf_field() }}
+      <div class="field">
+        <label for="code">Six-digit verification code</label>
+        <input type="text" id="code" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autofocus autocomplete="one-time-code">
+      </div>
+      <button class="btn block" type="submit">Enable 2FA</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

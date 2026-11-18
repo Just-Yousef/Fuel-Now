@@ -8,7 +8,11 @@ from __future__ import annotations
 import hashlib
 import hmac
 import re
+import base64
+import binascii
+import hashlib
 import secrets
+import struct
 import threading
 import time
 from functools import wraps
@@ -187,6 +191,42 @@ def record_login_failure(key: str) -> None:
 def reset_login_attempts(key: str) -> None:
     with _login_attempts_lock:
         _login_attempts.pop(key, None)
+
+
+def generate_totp_secret() -> str:
+    """Generate a Base32 TOTP secret compatible with authenticator apps."""
+    return base64.b32encode(secrets.token_bytes(20)).decode("ascii").rstrip("=")
+
+
+def verify_totp(secret: str, code: str, *, timestamp: float | None = None) -> bool:
+    """Verify a six-digit TOTP code, allowing one 30-second clock step either side."""
+    if not secret or not re.fullmatch(r"\d{6}", code or ""):
+        return False
+    try:
+        padded = secret.upper() + "=" * ((8 - len(secret) % 8) % 8)
+        key = base64.b32decode(padded, casefold=True)
+    except (ValueError, binascii.Error):
+        return False
+
+    counter_time = time.time() if timestamp is None else timestamp
+    submitted = int(code)
+    for step in (-1, 0, 1):
+        counter = int(counter_time // 30) + step
+        digest = hmac.new(key, struct.pack("!Q", counter), hashlib.sha1).digest()
+        offset = digest[-1] & 0x0F
+        binary = struct.unpack("!I", digest[offset:offset + 4])[0] & 0x7FFFFFFF
+        if hmac.compare_digest(f"{binary % 1000000:06d}", code):
+            return True
+    return False
+
+
+def totp_uri(secret: str, email: str) -> str:
+    """Return an otpauth URI for manual or QR authenticator enrollment."""
+    import urllib.parse
+
+    label = urllib.parse.quote(f"FuelNow:{email}")
+    issuer = urllib.parse.quote("FuelNow")
+    return f"otpauth://totp/{label}?secret={secret}&issuer={issuer}&digits=6&period=30"
 
 
 def idempotency_token_field() -> Markup:

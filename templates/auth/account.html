@@ -71,6 +71,22 @@
       </form>
     </div>
 
+    {% if current_user.role == 'admin' %}
+    <div class="card mt-2">
+      <h2>Administrator two-factor authentication</h2>
+      <p class="muted">{{ 'Two-factor authentication is enabled.' if current_user.admin_totp_enabled else 'Protect this administrator account with an authenticator app.' }}</p>
+      {% if current_user.admin_totp_enabled %}
+      <form method="post" class="mt-1">
+        {{ csrf_field() }}
+        <input type="hidden" name="action" value="disable_totp">
+        <button class="btn small danger" type="submit">Disable 2FA</button>
+      </form>
+      {% else %}
+      <a class="btn small secondary" href="{{ url_for('auth.admin_totp_setup') }}">Set up 2FA</a>
+      {% endif %}
+    </div>
+    {% endif %}
+
     <div class="card mt-2">
       <h2>Change password</h2>
       <form method="post">

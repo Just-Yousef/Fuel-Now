@@ -156,6 +156,10 @@ class User(UserMixin, db.Model):
     email_verified = db.Column(db.Boolean, nullable=False, default=False)
     email_verified_at = db.Column(db.DateTime)
 
+    # Optional TOTP two-factor authentication for administrators.
+    admin_totp_secret = db.Column(db.String(64))
+    admin_totp_enabled = db.Column(db.Boolean, nullable=False, default=False)
+
     # Last known driver position (used to pre-fill the location prompt).
     latitude = db.Column(db.Float)
     longitude = db.Column(db.Float)

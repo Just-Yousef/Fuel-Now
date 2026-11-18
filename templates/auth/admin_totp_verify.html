@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Verify administrator login · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="auth-shell">
+  <div class="card">
+    <h1>Two-factor verification</h1>
+    <p class="muted">Enter the six-digit code for <b>{{ email }}</b> from your authenticator app.</p>
+
+    <form method="post" class="mt-2">
+      {{ csrf_field() }}
+      <div class="field">
+        <label for="code">Authentication code</label>
+        <input type="text" id="code" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autofocus autocomplete="one-time-code">
+      </div>
+      <button class="btn block" type="submit">Verify and continue</button>
+    </form>
+
+    <p class="mt-2 muted"><a href="{{ url_for('auth.admin_login') }}">Back to administrator sign in</a></p>
+  </div>
+</div>
+{% endblock %}

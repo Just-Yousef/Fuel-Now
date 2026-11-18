@@ -4,10 +4,12 @@ from email.message import EmailMessage
 
 from flask import (
     Blueprint,
+    abort,
     current_app,
     flash,
     redirect,
     render_template,
+    session,
     request,
     url_for,
 )
@@ -287,6 +289,11 @@ def login():
             db.session.commit()
 
         security.reset_login_attempts(throttle_key)
+        if user.role == ROLE_ADMIN and user.admin_totp_enabled:
+            session["pending_totp_user_id"] = user.id
+            session["pending_totp_expires"] = utcnow().timestamp() + 300
+            session["pending_totp_remember"] = bool(request.form.get("remember"))
+            return redirect(url_for("auth.admin_totp_verify"))
         login_user(user, remember=bool(request.form.get("remember")))
         auth_utils.pin_session()
 
@@ -356,6 +363,11 @@ def admin_login():
             db.session.commit()
 
         security.reset_login_attempts(throttle_key)
+        if user.admin_totp_enabled:
+            session["pending_totp_user_id"] = user.id
+            session["pending_totp_expires"] = utcnow().timestamp() + 300
+            session["pending_totp_remember"] = bool(request.form.get("remember"))
+            return redirect(url_for("auth.admin_totp_verify"))
         login_user(user, remember=bool(request.form.get("remember")))
         auth_utils.pin_session()
 
@@ -365,6 +377,62 @@ def admin_login():
         return session_tokens.redirect_with_token("admin.dashboard", token)
 
     return render_template("auth/admin_login.html", email="")
+
+
+@auth_bp.route("/admin/two-factor/setup", methods=["GET", "POST"])
+@login_required
+def admin_totp_setup():
+    if current_user.role != ROLE_ADMIN:
+        abort(403)
+
+    if request.method == "POST":
+        code = (request.form.get("code") or "").strip()
+        secret = session.get("pending_totp_setup_secret")
+        if not secret or not security.verify_totp(secret, code):
+            flash("That verification code is invalid or expired.", "error")
+            return render_template("auth/admin_totp_setup.html", secret=secret), 400
+        current_user.admin_totp_secret = secret
+        current_user.admin_totp_enabled = True
+        db.session.commit()
+        session.pop("pending_totp_setup_secret", None)
+        flash("Administrator two-factor authentication enabled.", "success")
+        return redirect(url_for("auth.account"))
+
+    secret = security.generate_totp_secret()
+    session["pending_totp_setup_secret"] = secret
+    return render_template(
+        "auth/admin_totp_setup.html",
+        secret=secret,
+        otpauth_uri=security.totp_uri(secret, current_user.email),
+    )
+
+
+@auth_bp.route("/admin/two-factor/verify", methods=["GET", "POST"])
+def admin_totp_verify():
+    user_id = session.get("pending_totp_user_id")
+    expires = session.get("pending_totp_expires")
+    user = db.session.get(User, int(user_id)) if user_id else None
+
+    if user is None or not expires or utcnow().timestamp() > float(expires):
+        session.pop("pending_totp_user_id", None)
+        session.pop("pending_totp_expires", None)
+        flash("The two-factor verification session expired. Sign in again.", "error")
+        return redirect(url_for("auth.admin_login"))
+
+    if request.method == "POST":
+        code = (request.form.get("code") or "").strip()
+        if not user.admin_totp_enabled or not security.verify_totp(user.admin_totp_secret or "", code):
+            flash("Invalid authenticator code.", "error")
+            return render_template("auth/admin_totp_verify.html", email=user.email), 401
+
+        session.pop("pending_totp_user_id", None)
+        session.pop("pending_totp_expires", None)
+        login_user(user, remember=bool(session.pop("pending_totp_remember", False)))
+        auth_utils.pin_session()
+        token = session_tokens.login_with_token(user)
+        return session_tokens.redirect_with_token("admin.dashboard", token)
+
+    return render_template("auth/admin_totp_verify.html", email=user.email)
 
 
 @auth_bp.post("/logout")
@@ -525,6 +593,14 @@ def account():
                 current_user.longitude = coords.longitude
                 current_user.location_updated_at = utcnow()
                 flash("Saved location updated.", "success")
+
+        elif action == "disable_totp":
+            if current_user.role == ROLE_ADMIN:
+                current_user.admin_totp_secret = None
+                current_user.admin_totp_enabled = False
+                flash("Administrator two-factor authentication disabled.", "success")
+            else:
+                flash("This action is only available to administrators.", "error")
 
         elif action == "password":
             current_pw = request.form.get("current_password") or ""

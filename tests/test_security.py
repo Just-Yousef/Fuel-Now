@@ -933,6 +933,71 @@ def test_submit_buttons_are_guarded_in_shared_javascript():
     assert "submit.disabled = true" in js
 
 
+def _totp_code(secret, timestamp=None):
+    timestamp = time.time() if timestamp is None else timestamp
+    import base64
+    import binascii
+    import struct
+
+    padded = secret.upper() + "=" * ((8 - len(secret) % 8) % 8)
+    key = base64.b32decode(padded, casefold=True)
+    counter = int(timestamp // 30)
+    digest = hmac.new(key, struct.pack("!Q", counter), hashlib.sha1).digest()
+    offset = digest[-1] & 0x0F
+    binary = struct.unpack("!I", digest[offset:offset + 4])[0] & 0x7FFFFFFF
+    return f"{binary % 1000000:06d}"
+
+
+def test_totp_secret_and_code_validation():
+    secret = security.generate_totp_secret()
+    code = _totp_code(secret)
+    assert len(secret) >= 32
+    assert security.verify_totp(secret, code)
+    assert not security.verify_totp(secret, "000000")
+
+
+def test_admin_can_enable_totp(app, client):
+    admin = make_user(email="totp-setup@example.com", role=ROLE_ADMIN, full_name="TOTP Setup")
+    login(client, admin.email)
+
+    setup_page = client.get("/admin/two-factor/setup")
+    assert setup_page.status_code == 200
+    with client.session_transaction() as browser_session:
+        secret = browser_session["pending_totp_setup_secret"]
+
+    enabled = client.post("/admin/two-factor/setup", data={"code": _totp_code(secret)})
+    assert enabled.status_code == 302
+
+    with app.app_context():
+        saved = User.query.filter_by(email="totp-setup@example.com").one()
+        assert saved.admin_totp_enabled
+        assert saved.admin_totp_secret == secret
+
+
+def test_enabled_admin_requires_totp_at_login(app, client):
+    admin = make_user(email="totp-admin@example.com", role=ROLE_ADMIN, full_name="TOTP Admin")
+    with app.app_context():
+        admin.admin_totp_secret = security.generate_totp_secret()
+        admin.admin_totp_enabled = True
+        db.session.commit()
+        secret = admin.admin_totp_secret
+
+    password_response = client.post(
+        "/admin/login",
+        data={"email": "totp-admin@example.com", "password": PASSWORD},
+    )
+    assert password_response.status_code == 302
+    assert "/admin/two-factor/verify" in password_response.location
+
+    challenge = client.get("/admin/two-factor/verify")
+    assert challenge.status_code == 200
+
+    code = _totp_code(secret)
+    verified = client.post("/admin/two-factor/verify", data={"code": code})
+    assert verified.status_code == 302
+    assert "/admin/" in verified.location
+
+
 def test_places_endpoint_survives_a_provider_outage(client, monkeypatch):
     """A dead provider yields an empty list, never a 500."""
     import geo_search
