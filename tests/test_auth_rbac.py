@@ -255,6 +255,32 @@ def test_admin_can_approve_and_deactivate(app, client):
     assert denied.status_code == 403
 
 
+def test_admin_status_change_is_recorded(app, client):
+    admin = make_user(email="audit-admin@example.com", role=ROLE_ADMIN, full_name="Audit Admin")
+    driver = make_user(email="audit-driver@example.com", role=ROLE_DRIVER, full_name="Audit Driver")
+
+    login(client, admin.email)
+    response = client.post(
+        f"/admin/users/{driver.id}/status",
+        data={"status": "deactivated"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+
+    with app.app_context():
+        from models import AuditLog
+
+        log = AuditLog.query.filter_by(target_type="user", target_id=driver.id).one()
+        assert log.admin_id == admin.id
+        assert log.action == "status_changed"
+        assert log.old_status == "approved"
+        assert log.new_status == "deactivated"
+
+    audit_page = client.get("/admin/audit")
+    assert audit_page.status_code == 200
+    assert b"audit-driver@example.com" in audit_page.data
+
+
 def test_admin_cannot_deactivate_self(app, client):
     admin = make_user(email="admin@example.com", role=ROLE_ADMIN, full_name="Admin")
     login(client, admin.email)

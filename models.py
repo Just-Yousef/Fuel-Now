@@ -117,6 +117,26 @@ def utcnow() -> datetime:
 
 
 # --------------------------------------------------------------------------- #
+# Admin audit history
+# --------------------------------------------------------------------------- #
+class AuditLog(db.Model):
+    __tablename__ = "audit_logs"
+
+    id = db.Column(db.Integer, primary_key=True)
+    admin_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    action = db.Column(db.String(80), nullable=False, index=True)
+    target_type = db.Column(db.String(40), nullable=False, index=True)
+    target_id = db.Column(db.Integer, nullable=False, index=True)
+    old_status = db.Column(db.String(20))
+    new_status = db.Column(db.String(20), nullable=False)
+    details = db.Column(db.String(255))
+    ip_address = db.Column(db.String(64))
+    created_at = db.Column(db.DateTime, nullable=False, default=utcnow, index=True)
+
+    admin = db.relationship("User", foreign_keys=[admin_id])
+
+
+# --------------------------------------------------------------------------- #
 # Users
 # --------------------------------------------------------------------------- #
 class User(UserMixin, db.Model):

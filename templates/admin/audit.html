@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Audit history · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Audit history</h1>
+    <p class="lede">Recent administrator status changes across the platform.</p>
+  </div>
+  <a class="btn secondary" href="{{ url_for('admin.dashboard') }}">Overview</a>
+</div>
+
+{% if audit_logs %}
+<div class="card table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Administrator</th>
+        <th>Target</th>
+        <th>Change</th>
+        <th>IP address</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for log in audit_logs %}
+      <tr>
+        <td class="nowrap">{{ log.created_at|short_dt }}</td>
+        <td>
+          {% if log.admin %}
+            <b>{{ log.admin.full_name }}</b><br>
+            <span class="muted" style="font-size:.78rem">{{ log.admin.email }}</span>
+          {% else %}
+            <span class="muted">Unknown administrator</span>
+          {% endif %}
+        </td>
+        <td>
+          <b>{{ log.target_type|title }}</b> #{{ log.target_id }}<br>
+          {% if log.details %}<span class="muted" style="font-size:.78rem">{{ log.details }}</span>{% endif %}
+        </td>
+        <td>
+          <span class="badge warn">{{ log.old_status or 'none' }}</span>
+          <span class="muted">→</span>
+          <span class="badge {{ 'good' if log.new_status == 'approved' else ('bad' if log.new_status == 'deactivated' else 'warn') }}">
+            {{ log.new_status }}
+          </span>
+        </td>
+        <td class="mono muted" style="font-size:.78rem">{{ log.ip_address or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card"><p class="table-empty">No administrator changes have been recorded yet.</p></div>
+{% endif %}
+{% endblock %}

@@ -27,6 +27,7 @@ from auth_utils import admin_required
 from extensions import db
 from models import (  # noqa: F401
     ACCOUNT_STATUSES,
+    AuditLog,
     ORDER_ACTIVE_STATUSES,
     ORDER_COMPLETED,
     REQUEST_ACTIVE_STATUSES,
@@ -82,6 +83,7 @@ def _set_status(entity, new_status: str, label: str) -> str | None:
     """
     if new_status not in VALID_STATUSES:
         return "Unknown status."
+    old_status = entity.status
     entity.status = new_status
     # Keep the user account and its business record in sync.
     user = None
@@ -104,6 +106,21 @@ def _set_status(entity, new_status: str, label: str) -> str | None:
             user.is_active_flag = True
         else:
             user.status = STATUS_PENDING
+    target_type = (
+        "user" if isinstance(entity, User)
+        else "station" if isinstance(entity, Station)
+        else "mechanic"
+    )
+    db.session.add(AuditLog(
+        admin_id=current_user.id,
+        action="status_changed",
+        target_type=target_type,
+        target_id=entity.id,
+        old_status=old_status,
+        new_status=new_status,
+        details=label,
+        ip_address=request.remote_addr,
+    ))
     db.session.commit()
     flash(f"{label} set to “{new_status}”.", "success")
     return None
@@ -264,6 +281,13 @@ def update_mechanic_status(mechanic_id: int):
 # --------------------------------------------------------------------------- #
 # Monitoring
 # --------------------------------------------------------------------------- #
+@admin_bp.get("/audit")
+@admin_required
+def audit():
+    rows = AuditLog.query.order_by(AuditLog.created_at.desc()).limit(250).all()
+    return render_template("admin/audit.html", audit_logs=rows)
+
+
 @admin_bp.get("/orders")
 @admin_required
 def orders():
