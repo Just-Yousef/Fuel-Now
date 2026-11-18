@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Fuel &amp; prices · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Fuel types &amp; prices</h1>
+    <p class="lede">Drivers can only order a fuel type that is listed here and marked in stock.</p>
+  </div>
+  <a class="btn secondary" href="{{ url_for('station.dashboard') }}">Dashboard</a>
+</div>
+
+<div class="split">
+  <div class="card">
+    <h2>Current price list</h2>
+    {% if products %}
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Fuel type</th><th>Price / litre</th><th>Stock</th><th>Update</th><th></th></tr></thead>
+          <tbody>
+            {% for product in products %}
+              <tr>
+                <td><b>{{ product.fuel_type }}</b><br>
+                  <span class="muted" style="font-size:.78rem">updated {{ product.updated_at|short_dt }}</span>
+                </td>
+                <td colspan="2">
+                  <form method="post" action="{{ url_for('station.update_product', product_id=product.id) }}"
+                        id="product-form-{{ product.id }}">
+  {{ csrf_field() }}
+                    <div class="btn-row">
+                      <input type="number" name="price_per_litre" step="0.01" min="0.01"
+                             value="{{ '%.2f'|format(product.price_per_litre) }}"
+                             style="width:120px" required>
+                      <label class="checkline" style="font-weight:400">
+                        <input type="checkbox" name="in_stock" {{ 'checked' if product.in_stock }}>
+                        <span class="badge {{ 'good' if product.in_stock else 'bad' }}">
+                          {{ 'In stock' if product.in_stock else 'Out of stock' }}
+                        </span>
+                      </label>
+                    </div>
+                  </form>
+                </td>
+                <td class="actions">
+                  <button class="btn small" type="submit" form="product-form-{{ product.id }}">Save</button>
+                </td>
+                <td>
+                  <form method="post" action="{{ url_for('station.delete_product', product_id=product.id) }}"
+                        onsubmit="return confirm('Remove {{ product.fuel_type }} from your price list?');">
+  {{ csrf_field() }}
+                    <button class="btn small danger" type="submit">Remove</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="table-empty">You haven't listed any fuel types yet — drivers can't order from you until you add one.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2>Add a fuel type</h2>
+    <form method="post" action="{{ url_for('station.add_product') }}">
+  {{ csrf_field() }}
+      <div class="field">
+        <label for="fuel_type">Fuel type</label>
+        <select id="fuel_type" name="fuel_type" required>
+          {% for choice in fuel_choices %}
+            <option value="{{ choice }}">{{ choice }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="price">Price per litre ({{ currency }})</label>
+        <input type="number" id="price" name="price_per_litre" step="0.01" min="0.01" placeholder="897.50" required>
+      </div>
+      <button class="btn block" type="submit">Add fuel type</button>
+    </form>
+    <p class="muted mt-2" style="font-size:.84rem">
+      Prices are stored per station, so two stations can sell the same fuel type at different prices.
+      Quantities are limited to 1–500 litres per order.
+    </p>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,14 @@
+# Pinned, current versions (verified against PyPI). Keep these exact so builds
+# are reproducible; run `pip list --outdated` to review upgrades.
+Flask==3.1.3
+Flask-SQLAlchemy==3.1.1
+Flask-Login==0.6.3
+
+# Image validation for uploads (magic-byte checks + EXIF-stripping re-encode).
+Pillow==11.3.0
+
+# Production WSGI server (the Flask dev server must never face the internet).
+gunicorn==27.0.0
+
+# Testing
+pytest==9.2.0

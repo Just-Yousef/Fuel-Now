@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% from "driver/_macros.html" import location_banner, mechanic_card with context %}
+{% block title %}Find a mechanic · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Mechanics covering your area</h1>
+    <p class="lede">Only approved, available mechanics whose service radius reaches your position are listed.</p>
+  </div>
+</div>
+
+{{ location_banner(location, 'driver.mechanics') }}
+
+<form class="filter-bar" method="get" action="{{ url_for('driver.mechanics') }}" id="mech-filter">
+  {% if session_token %}<input type="hidden" name="sid" value="{{ session_token }}">{% endif %}
+  <input type="hidden" name="lat" value="{{ '%.6f'|format(origin.latitude) if origin else '' }}">
+  <input type="hidden" name="lng" value="{{ '%.6f'|format(origin.longitude) if origin else '' }}">
+  <div class="field">
+    <label for="radius">Search radius (km)</label>
+    <input type="number" id="radius" name="radius" min="1" max="{{ config.MAX_SEARCH_RADIUS_KM }}" step="1" value="{{ radius|round|int }}">
+  </div>
+  <button class="btn secondary" type="submit">Apply</button>
+  <button class="btn secondary" type="button" data-geo-form="mech-filter">Use my location</button>
+</form>
+
+{% if origin is none %}
+  <div class="card"><p class="table-empty">We need your location to match you with mechanics. Tap “Use my location”.</p></div>
+{% elif results %}
+  <p class="muted mb-1">{{ results|length }} mechanic{{ '' if results|length == 1 else 's' }} available around you.</p>
+  <div class="list">
+    {% for result in results %}
+      {{ mechanic_card(result, origin) }}
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card">
+    <p class="table-empty">
+      No available mechanics cover your position within {{ radius|round|int }} km right now.
+      Widen the radius or try again shortly.
+    </p>
+  </div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script nonce="{{ csp_nonce() }}">
+  LocationHelper.init({ primaryUrl: "{{ url_for('driver.save_location') }}" });
+</script>
+{% endblock %}

@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% from "driver/_macros.html" import location_banner, station_card, mechanic_card, order_steps, request_steps with context %}
+{% block title %}Driver dashboard · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Hello, {{ current_user.full_name.split(' ')[0] }}</h1>
+    <p class="lede">Find fuel and mechanics near you, and follow your active orders.</p>
+  </div>
+  <div class="btn-row">
+    <a class="btn" href="{{ url_for('driver.stations') }}">Find fuel</a>
+    <a class="btn secondary" href="{{ url_for('driver.mechanics') }}">Find a mechanic</a>
+  </div>
+</div>
+
+{{ location_banner(location, 'driver.dashboard') }}
+
+<div class="grid cols-4 mb-2">
+  <div class="kpi">
+    <div class="label">Active orders</div>
+    <div class="value">{{ stats.active_orders }}</div>
+    <div class="hint">{{ stats.total_orders }} total</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Active service requests</div>
+    <div class="value">{{ stats.active_requests }}</div>
+    <div class="hint">{{ stats.total_requests }} total</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Stations found</div>
+    <div class="value">{{ stations|length }}</div>
+    <div class="hint">within {{ radius|round|int }} km</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Mechanics found</div>
+    <div class="value">{{ mechanics|length }}</div>
+    <div class="hint">covering your area</div>
+  </div>
+</div>
+
+<form class="filter-bar" method="get" action="{{ url_for('driver.dashboard') }}" id="dash-filter">
+  {% if session_token %}<input type="hidden" name="sid" value="{{ session_token }}">{% endif %}
+  <input type="hidden" name="lat" value="{{ '%.6f'|format(origin.latitude) if origin else '' }}">
+  <input type="hidden" name="lng" value="{{ '%.6f'|format(origin.longitude) if origin else '' }}">
+  <div class="field">
+    <label for="radius">Search radius (km)</label>
+    <input type="number" id="radius" name="radius" min="1" max="{{ config.MAX_SEARCH_RADIUS_KM }}" step="1" value="{{ radius|round|int }}">
+  </div>
+  <div class="field">
+    <label for="fuel_type">Fuel type</label>
+    <select id="fuel_type" name="fuel_type">
+      <option value="">Any fuel</option>
+      {% for option in fuel_types %}
+        <option value="{{ option }}" {{ 'selected' if option == fuel_type }}>{{ option }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button class="btn secondary" type="submit">Apply</button>
+  <button class="btn secondary" type="button" data-geo-form="dash-filter">Use my location</button>
+</form>
+
+<div class="split">
+  <div class="card">
+    <div class="card-head">
+      <h2>Fuel stations near you</h2>
+      <a class="btn small secondary" href="{{ url_for('driver.stations') }}">See all</a>
+    </div>
+    {% if origin is none %}
+      <p class="table-empty">Set your location above to see stations sorted by distance.</p>
+    {% elif stations %}
+      <div class="list">
+        {% for result in stations %}
+          {{ station_card(result, origin, loop.index) }}
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="table-empty">No approved stations within {{ radius|round|int }} km. Try a wider radius.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>Mechanics covering your area</h2>
+      <a class="btn small secondary" href="{{ url_for('driver.mechanics') }}">See all</a>
+    </div>
+    {% if origin is none %}
+      <p class="table-empty">Set your location above to see mechanics sorted by distance.</p>
+    {% elif mechanics %}
+      <div class="list">
+        {% for result in mechanics %}
+          {{ mechanic_card(result, origin) }}
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="table-empty">No available mechanics match your area right now.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="split mt-2">
+  <div class="card">
+    <div class="card-head">
+      <h2>Recent fuel orders</h2>
+      <a class="btn small secondary" href="{{ url_for('driver.orders') }}">Track all</a>
+    </div>
+    {% if recent_orders %}
+      <div class="list">
+        {% for order in recent_orders %}
+          <div class="listing">
+            <div class="main">
+              <div class="title">{{ order.fuel_type }} · {{ order.quantity_litres|round(1) }} L</div>
+              <div class="meta">{{ order.station.name }} · <span class="mono">{{ order.reference }}</span> · {{ order.created_at|short_dt }}</div>
+              {{ order_steps(order.status) }}
+            </div>
+            <div class="side">
+              <div class="distance">{{ order.total_price|money }}</div>
+              <span class="badge {{ 'bad' if order.status in bad_statuses else ('good' if order.status in good_statuses else 'info') }}">{{ order.status_label }}</span>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="table-empty">No orders yet — pick a station above to place your first order.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>Recent service requests</h2>
+      <a class="btn small secondary" href="{{ url_for('driver.requests_view') }}">View all</a>
+    </div>
+    {% if recent_requests %}
+      <div class="list">
+        {% for service_request in recent_requests %}
+          <div class="listing">
+            <div class="main">
+              <div class="title">{{ service_request.issue }}</div>
+              <div class="meta">{{ service_request.mechanic.business_name }} · <span class="mono">{{ service_request.reference }}</span> · {{ service_request.created_at|short_dt }}</div>
+              {{ request_steps(service_request.status) }}
+            </div>
+            <div class="side">
+              <span class="badge {{ 'bad' if service_request.status in bad_statuses else ('good' if service_request.status in good_statuses else 'info') }}">{{ service_request.status_label }}</span>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="table-empty">No service requests yet.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script nonce="{{ csp_nonce() }}">
+  LocationHelper.init({
+    primaryUrl: "{{ url_for('driver.save_location') }}"
+  });
+</script>
+{% endblock %}

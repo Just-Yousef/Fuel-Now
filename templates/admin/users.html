@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% from "admin/_status_forms.html" import status_controls %}
+{% block title %}Users · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Users</h1>
+    <p class="lede">Approve, deactivate or reactivate any account. Deactivated accounts cannot sign in.</p>
+  </div>
+  <a class="btn secondary" href="{{ url_for('admin.dashboard') }}">Overview</a>
+</div>
+
+<form class="filter-bar" method="get">
+  {% if session_token %}<input type="hidden" name="sid" value="{{ session_token }}">{% endif %}
+  <div class="field">
+    <label for="role">Role</label>
+    <select id="role" name="role">
+      <option value="">All roles</option>
+      {% for role in roles %}
+        <option value="{{ role }}" {{ 'selected' if selected_role == role }}>{{ role_labels[role] }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="status">Status</label>
+    <select id="status" name="status">
+      <option value="">Any status</option>
+      {% for status in statuses %}
+        <option value="{{ status }}" {{ 'selected' if selected_status == status }}>{{ status|nice_status }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button class="btn secondary" type="submit">Filter</button>
+</form>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Location</th><th>Joined</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+          <tr>
+            <td><b>{{ user.full_name }}</b>{% if user.id == current_user.id %} <span class="badge brand">you</span>{% endif %}
+              {% if user.station %}<br><span class="muted" style="font-size:.8rem">{{ user.station.name }}</span>{% endif %}
+              {% if user.mechanic %}<br><span class="muted" style="font-size:.8rem">{{ user.mechanic.business_name }}</span>{% endif %}
+            </td>
+            <td>{{ user.email }}<br><span class="muted" style="font-size:.8rem">{{ user.phone or '—' }}</span></td>
+            <td><span class="badge">{{ user.role_label }}</span></td>
+            <td>
+              <span class="badge {{ 'bad' if user.status == 'deactivated' else ('good' if user.status == 'approved' else 'warn') }}">
+                {{ user.status|nice_status }}
+              </span>
+            </td>
+            <td class="mono" style="font-size:.78rem">
+              {% if user.has_location %}{{ '%.4f'|format(user.latitude) }}, {{ '%.4f'|format(user.longitude) }}{% else %}—{% endif %}
+            </td>
+            <td class="nowrap">{{ user.created_at|short_dt }}</td>
+            <td class="actions">
+              {% if user.id == current_user.id %}
+                <span class="muted">—</span>
+              {% else %}
+                {{ status_controls('admin.update_user_status', user.id, user.status, request.full_path) }}
+              {% endif %}
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="7" class="table-empty">No users match this filter.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

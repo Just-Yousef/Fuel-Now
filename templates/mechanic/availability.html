@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Availability &amp; service area · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Availability &amp; service area</h1>
+    <p class="lede">Drivers only see you when you are available and they are inside your radius.</p>
+  </div>
+  <a class="btn secondary" href="{{ url_for('mechanic.dashboard') }}">Dashboard</a>
+</div>
+
+<div class="split">
+  <div class="card">
+    <form method="post">
+  {{ csrf_field() }}
+      <div class="field checkline">
+        <input type="checkbox" id="available" name="available" {{ 'checked' if mechanic.available }}>
+        <label for="available" style="margin:0;font-weight:600">I am available and accepting jobs</label>
+      </div>
+
+      <fieldset class="mt-2">
+        <legend>Service area</legend>
+        <div class="field">
+          <label for="service_radius_km">Service radius (km)</label>
+          <input type="number" id="service_radius_km" name="service_radius_km" min="1" max="200" step="1"
+                 value="{{ mechanic.service_radius_km|round|int }}">
+          <div class="help">How far you are willing to travel from your base. 1–200 km.</div>
+        </div>
+        <div class="field">
+          <label for="city">Base city</label>
+          <input type="text" id="city" name="city" value="{{ mechanic.city }}">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="lat">Base latitude</label>
+            <input type="number" step="any" id="lat" name="latitude" value="{{ mechanic.latitude }}">
+          </div>
+          <div class="field">
+            <label for="lng">Base longitude</label>
+            <input type="number" step="any" id="lng" name="longitude" value="{{ mechanic.longitude }}">
+          </div>
+        </div>
+        <button type="button" class="btn small secondary" data-geo-locate
+                data-geo-target="lat,lng">Use my current position as base</button>
+        <div class="help" data-geo-status>Changing your base moves the jobs matched to your area.</div>
+      </fieldset>
+
+      <button class="btn" type="submit">Save availability</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Waiting in your area</h2>
+    <p class="muted" style="font-size:.86rem">Pending requests within {{ mechanic.service_radius_km|round|int }} km of your base.</p>
+    {% if matched %}
+      <div class="list">
+        {% for service_request, distance in matched %}
+          <div class="listing">
+            <div class="main">
+              <div class="title">{{ service_request.issue }}</div>
+              <div class="meta">{{ service_request.driver.full_name }} · {{ '%.1f km'|format(distance) }} from your base</div>
+              <div class="meta">{{ service_request.created_at|short_dt }}</div>
+            </div>
+            <div class="side">
+              <form method="post" action="{{ url_for('mechanic.update_request_status', request_id=service_request.id) }}">
+  {{ csrf_field() }}
+                <input type="hidden" name="next" value="{{ url_for('mechanic.availability') }}">
+                <input type="hidden" name="status" value="accepted">
+                <button class="btn small" type="submit">Accept</button>
+              </form>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="table-empty">Nothing pending. Widen your radius to catch more drivers.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+

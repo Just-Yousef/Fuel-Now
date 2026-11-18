@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Not found · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="auth-shell">
+  <div class="card center">
+    <h1>404 · Page not found</h1>
+    <p class="muted">The page you asked for doesn't exist, or the record has been removed.</p>
+    <div class="btn-row mt-2" style="justify-content:center">
+      <a class="btn" href="{{ url_for(current_user.home_endpoint) if current_user.is_authenticated else url_for('public.index') }}">Take me home</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

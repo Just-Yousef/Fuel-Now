@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}My account · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>My account</h1>
+    <p class="lede">{{ current_user.role_label }} · {{ current_user.email }}</p>
+  </div>
+  <span class="badge {{ 'good' if current_user.status == 'approved' else 'warn' }}">
+    {{ current_user.status|nice_status }}
+  </span>
+</div>
+
+<div class="grid cols-2">
+  <div class="card">
+    <h2>Profile</h2>
+    <form method="post">
+  {{ csrf_field() }}
+      <input type="hidden" name="action" value="profile">
+      <div class="field">
+        <label for="full_name">Full name</label>
+        <input type="text" id="full_name" name="full_name" value="{{ current_user.full_name }}" required>
+      </div>
+      <div class="field">
+        <label for="phone">Phone</label>
+        <input type="tel" id="phone" name="phone" value="{{ current_user.phone or '' }}">
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" value="{{ current_user.email }}" disabled>
+        <div class="help">Email addresses cannot be changed in this demo.</div>
+      </div>
+      <button class="btn" type="submit">Save profile</button>
+    </form>
+  </div>
+
+  <div>
+    <div class="card">
+      <h2>Saved location</h2>
+      <p class="muted" style="font-size:.87rem">
+        Used as a fallback when the browser cannot provide your GPS position.
+      </p>
+      <p class="mono" style="font-size:.88rem">
+        {% if current_user.has_location %}
+          {{ '%.6f'|format(current_user.latitude) }}, {{ '%.6f'|format(current_user.longitude) }}
+        {% else %}
+          Not set
+        {% endif %}
+      </p>
+      <form method="post" class="mt-1">
+  {{ csrf_field() }}
+        <input type="hidden" name="action" value="location">
+        <div class="field-row">
+          <div class="field">
+            <label for="lat">Latitude</label>
+            <input type="number" step="any" id="lat" name="latitude" value="{{ current_user.latitude or '' }}">
+          </div>
+          <div class="field">
+            <label for="lng">Longitude</label>
+            <input type="number" step="any" id="lng" name="longitude" value="{{ current_user.longitude or '' }}">
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn secondary" type="submit">Save location</button>
+          {% if current_user.role == 'driver' %}
+            <button class="btn secondary" type="button" data-geolocate>Use my current position</button>
+          {% endif %}
+        </div>
+        <p class="help" data-geo-status></p>
+      </form>
+    </div>
+
+    <div class="card mt-2">
+      <h2>Change password</h2>
+      <form method="post">
+  {{ csrf_field() }}
+        <input type="hidden" name="action" value="password">
+        <div class="field">
+          <label for="current_password">Current password</label>
+          <input type="password" id="current_password" name="current_password" required autocomplete="current-password">
+        </div>
+        <div class="field">
+          <label for="new_password">New password</label>
+          <input type="password" id="new_password" name="new_password" required minlength="8" autocomplete="new-password">
+        </div>
+        <button class="btn secondary" type="submit">Update password</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script nonce="{{ csp_nonce() }}">
+  LocationHelper.init({ primaryUrl: "{{ url_for('driver.save_location') if current_user.role == 'driver' else '' }}" });
+</script>
+{% endblock %}

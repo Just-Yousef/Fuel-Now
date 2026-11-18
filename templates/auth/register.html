@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}Create an account · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="auth-shell wide">
+  <div class="card">
+    <h1>Create your account</h1>
+    <p class="muted">
+      Driver accounts work immediately. Station and mechanic accounts are reviewed by an
+      administrator before they appear to drivers.
+    </p>
+
+    <form method="post" action="{{ url_for('auth.register') }}" class="mt-2" id="register-form">
+  {{ csrf_field() }}
+      <fieldset>
+        <legend>Account type</legend>
+        <div class="field">
+          <label for="role">I am a…</label>
+          <select name="role" id="role" required data-role-select>
+            {% for role in self_signup_roles %}
+              <option value="{{ role }}" {{ 'selected' if form.get('role', request.args.get('role', 'driver')) == role }}>
+                {{ role_labels[role] }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Your details</legend>
+        <div class="field">
+          <label for="full_name">Full name</label>
+          <input type="text" id="full_name" name="full_name" value="{{ form.get('full_name', '') }}" required>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="email">Email address</label>
+            <input type="email" id="email" name="email" value="{{ form.get('email', '') }}" required autocomplete="username">
+          </div>
+          <div class="field">
+            <label for="phone">Phone (optional)</label>
+            <input type="tel" id="phone" name="phone" value="{{ form.get('phone', '') }}" placeholder="+234…">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required minlength="8" autocomplete="new-password">
+            <div class="help">At least 8 characters.</div>
+          </div>
+          <div class="field">
+            <label for="confirm_password">Confirm password</label>
+            <input type="password" id="confirm_password" name="confirm_password" required minlength="8" autocomplete="new-password">
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset data-role-block="driver">
+        <legend>Your location (drivers)</legend>
+        <p class="muted" style="font-size:.85rem">
+          Type an area or landmark and pick it from the list, or use your current
+          location. Either way we record the coordinates for you.
+        </p>
+
+        <div class="field">
+          <label for="place_query">Where are you?</label>
+          <div class="field-row" style="align-items:flex-start">
+            <div style="flex:1 1 16rem">
+              <input type="text" id="place_query" name="place_query"
+                     value="{{ form.get('place_query', '') }}"
+                     placeholder="e.g. Maitama, Abuja"
+                     data-place-search
+                     data-place-target="latitude,longitude"
+                     data-place-summary="#place_status"
+                     aria-describedby="place_status">
+            </div>
+            <button type="button" class="btn small secondary" data-geo-locate
+                    data-geo-target="latitude,longitude"
+                    data-geo-status-target="#place_status"
+                    data-geo-fill-name="#place_query">Use my current location</button>
+          </div>
+          <div class="help" id="place_status" data-geo-status>
+            Pick a suggestion or use your current location to set the coordinates.
+          </div>
+          <p class="place-source">
+            Search by <a href="https://www.openstreetmap.org/copyright" target="_blank"
+            rel="noopener noreferrer">OpenStreetMap</a> contributors.
+          </p>
+        </div>
+
+        {# Coordinates are filled by the address search or the GPS button and
+           submitted as hidden fields — drivers never type raw numbers here. #}
+        <input type="hidden" id="latitude" name="latitude" value="{{ form.get('latitude', '') }}">
+        <input type="hidden" id="longitude" name="longitude" value="{{ form.get('longitude', '') }}">
+      </fieldset>
+
+      <fieldset data-role-block="station" hidden>
+        <legend>Station details</legend>
+        <div class="field-row">
+          <div class="field">
+            <label for="station_name">Station name</label>
+            <input type="text" id="station_name" name="station_name" value="{{ form.get('station_name', '') }}">
+          </div>
+          <div class="field">
+            <label for="city">City</label>
+            <input type="text" id="city" name="city" value="{{ form.get('city', '') }}">
+          </div>
+        </div>
+        <div class="field">
+          <label for="address">Street address</label>
+          <input type="text" id="address" name="address" value="{{ form.get('address', '') }}">
+        </div>
+        <div class="field">
+          <label for="opening_hours">Opening hours</label>
+          <input type="text" id="opening_hours" name="opening_hours" value="{{ form.get('opening_hours', '06:00 - 22:00') }}">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="st_lat">Latitude</label>
+            <input type="number" step="any" id="st_lat" name="latitude" value="{{ form.get('latitude', '') }}" placeholder="9.0778">
+          </div>
+          <div class="field">
+            <label for="st_lng">Longitude</label>
+            <input type="number" step="any" id="st_lng" name="longitude" value="{{ form.get('longitude', '') }}" placeholder="7.4922">
+          </div>
+        </div>
+        <button type="button" class="btn small secondary" data-geo-locate
+                data-geo-target="st_lat,st_lng">Use my current position</button>
+        <div class="help" data-geo-status>Your station's coordinates decide which drivers see you as nearby.</div>
+      </fieldset>
+
+      <fieldset data-role-block="mechanic" hidden>
+        <legend>Mechanic details</legend>
+        <div class="field-row">
+          <div class="field">
+            <label for="business_name">Business / trade name</label>
+            <input type="text" id="business_name" name="business_name" value="{{ form.get('business_name', '') }}">
+          </div>
+          <div class="field">
+            <label for="m_city">Service city</label>
+            <input type="text" id="m_city" name="city" value="{{ form.get('city', '') }}">
+          </div>
+        </div>
+        <div class="field">
+          <label for="specialties">Specialties</label>
+          <input type="text" id="specialties" name="specialties" value="{{ form.get('specialties', '') }}" placeholder="Engine, brakes, electrical">
+        </div>
+        <div class="field">
+          <label for="m_address">Workshop address</label>
+          <input type="text" id="m_address" name="address" value="{{ form.get('address', '') }}">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="service_radius_km">Service radius (km)</label>
+            <input type="number" step="1" min="1" max="200" id="service_radius_km" name="service_radius_km" value="{{ form.get('service_radius_km', 15) }}">
+          </div>
+          <div class="field">
+            <label>Base coordinates</label>
+            <div class="field-row">
+              <input type="number" step="any" id="mc_lat" name="latitude" value="{{ form.get('latitude', '') }}" placeholder="lat" aria-label="Base latitude">
+              <input type="number" step="any" id="mc_lng" name="longitude" value="{{ form.get('longitude', '') }}" placeholder="lng" aria-label="Base longitude">
+            </div>
+            <div class="help">
+              <button type="button" class="btn small secondary mt-1" data-geo-locate
+                      data-geo-target="mc_lat,mc_lng">Use my current position</button>
+              <span data-geo-status>Your base decides which jobs match your service radius.</span>
+            </div>
+          </div>
+        </div>
+      </fieldset>
+
+      <button class="btn block" type="submit">Create account</button>
+    </form>
+
+    <p class="mt-2 muted">Already registered? <a href="{{ url_for('auth.login') }}">Sign in</a>.</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script nonce="{{ csp_nonce() }}">
+(function () {
+  var select = document.querySelector("[data-role-select]");
+  var blocks = document.querySelectorAll("[data-role-block]");
+
+  function sync() {
+    blocks.forEach(function (block) {
+      var show = block.dataset.roleBlock === select.value;
+      block.hidden = !show;
+      block.querySelectorAll("input").forEach(function (input) {
+        // Only the visible block's coordinate inputs may be submitted.
+        input.disabled = !show;
+      });
+    });
+  }
+  select.addEventListener("change", sync);
+  sync();
+
+})();
+</script>
+{% endblock %}

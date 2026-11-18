@@ -1,0 +1,22 @@
+{% macro status_controls(endpoint, entity_id, current, next_page) %}
+  <div class="btn-row">
+    {% if current != 'approved' %}
+      <form method="post" action="{{ url_for(endpoint, **({'user_id': entity_id} if 'user' in endpoint else {'station_id': entity_id} if 'station' in endpoint else {'mechanic_id': entity_id})) }}">
+  {{ csrf_field() }}
+        <input type="hidden" name="status" value="approved">
+        <input type="hidden" name="next" value="{{ next_page }}">
+        <button class="btn small" type="submit">Approve</button>
+      </form>
+    {% endif %}
+    {% if current != 'deactivated' %}
+      <form method="post" action="{{ url_for(endpoint, **({'user_id': entity_id} if 'user' in endpoint else {'station_id': entity_id} if 'station' in endpoint else {'mechanic_id': entity_id})) }}">
+  {{ csrf_field() }}
+        <input type="hidden" name="status" value="deactivated">
+        <input type="hidden" name="next" value="{{ next_page }}">
+        <button class="btn small danger" type="submit">Deactivate</button>
+      </form>
+    {% else %}
+      <span class="badge bad">Deactivated</span>
+    {% endif %}
+  </div>
+{% endmacro %}

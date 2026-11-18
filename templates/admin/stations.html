@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% from "admin/_status_forms.html" import status_controls %}
+{% block title %}Stations · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Fuel stations</h1>
+    <p class="lede">Only approved stations appear in driver searches. Deactivating closes the station.</p>
+  </div>
+  <a class="btn secondary" href="{{ url_for('admin.dashboard') }}">Overview</a>
+</div>
+
+<form class="filter-bar" method="get">
+  {% if session_token %}<input type="hidden" name="sid" value="{{ session_token }}">{% endif %}
+  <div class="field">
+    <label for="status">Status</label>
+    <select id="status" name="status">
+      <option value="">Any status</option>
+      {% for status in ['pending', 'approved', 'deactivated'] %}
+        <option value="{{ status }}" {{ 'selected' if selected_status == status }}>{{ status|nice_status }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button class="btn secondary" type="submit">Filter</button>
+</form>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Station</th><th>Location</th><th>Owner account</th><th>Fuel types</th><th>Orders</th><th>Status</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for station in stations %}
+          <tr>
+            <td>
+              <b>{{ station.name }}</b><br>
+              <span class="muted" style="font-size:.8rem">{{ station.address }}</span>
+              <div class="mt-1">
+                <span class="badge {{ 'good' if station.is_open else 'warn' }}">{{ 'Open' if station.is_open else 'Closed' }}</span>
+                <span class="badge">{{ station.opening_hours }}</span>
+              </div>
+            </td>
+            <td>
+              {{ station.city }}<br>
+              <span class="mono muted" style="font-size:.75rem">{{ '%.4f'|format(station.latitude) }}, {{ '%.4f'|format(station.longitude) }}</span>
+            </td>
+            <td>{{ station.owner.email }}<br><span class="muted" style="font-size:.8rem">{{ station.owner.status|nice_status }}</span></td>
+            <td>{{ station.products|length }}</td>
+            <td>{{ station.orders|length }}</td>
+            <td>
+              <span class="badge {{ 'bad' if station.status == 'deactivated' else ('good' if station.status == 'approved' else 'warn') }}">
+                {{ station.status|nice_status }}
+              </span>
+            </td>
+            <td class="actions">{{ status_controls('admin.update_station_status', station.id, station.status, request.full_path) }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="7" class="table-empty">No stations match this filter.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

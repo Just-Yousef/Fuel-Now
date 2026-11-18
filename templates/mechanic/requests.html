@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Service requests · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Service requests</h1>
+    <p class="lede">
+      Requests inside your {{ mechanic.service_radius_km|round|int }} km service area around
+      {{ mechanic.city }}, nearest first. Accepted jobs stay listed even if the driver moves.
+    </p>
+  </div>
+  <a class="btn secondary" href="{{ url_for('mechanic.dashboard') }}">Dashboard</a>
+</div>
+
+<div class="filter-bar">
+  <div class="chip-row">
+    <a class="chip {{ 'active' if not selected_status }}" href="{{ url_for('mechanic.requests_view') }}">All</a>
+    {% for status in request_statuses %}
+      <a class="chip {{ 'active' if selected_status == status }}"
+         href="{{ url_for('mechanic.requests_view', status=status) }}">{{ status|nice_status }}</a>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card">
+  {% if matched %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Reference</th><th>Driver</th><th>Issue</th><th>Distance</th><th>Received</th><th>Status</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+          {% for service_request, distance in matched %}
+            <tr>
+              <td class="mono">{{ service_request.reference }}</td>
+              <td>
+                {{ service_request.driver.full_name }}<br>
+                <span class="muted" style="font-size:.8rem">{{ service_request.driver.phone or service_request.driver.email }}</span>
+                {% if service_request.vehicle %}<br><span class="muted nowrap" style="font-size:.8rem">{{ service_request.vehicle }}</span>{% endif %}
+              </td>
+              <td>
+                <b>{{ service_request.issue }}</b>
+                {% if service_request.description %}
+                  <br><span class="muted" style="font-size:.8rem">{{ service_request.description }}</span>
+                {% endif %}
+                {% if service_request.latitude %}
+                  <br><span class="muted mono nowrap" style="font-size:.75rem">
+                    {{ '%.4f'|format(service_request.latitude) }}, {{ '%.4f'|format(service_request.longitude) }}
+                  </span>
+                {% endif %}
+              </td>
+              <td class="nowrap">{{ '%.1f km'|format(distance) }}</td>
+              <td class="nowrap">{{ service_request.created_at|short_dt }}</td>
+              <td>
+                <span class="badge {{ 'bad' if service_request.status in bad_statuses else ('good' if service_request.status in good_statuses else 'info') }}">
+                  {{ service_request.status_label }}
+                </span>
+              </td>
+              <td class="actions">
+                <div class="btn-row">
+                  <form method="post" action="{{ url_for('mechanic.update_request_status', request_id=service_request.id) }}">
+  {{ csrf_field() }}
+                    <input type="hidden" name="next" value="{{ request.full_path }}">
+                    <div class="btn-row">
+                      {% for next_status in transitions.get(service_request.status, ()) %}
+                        <button class="btn small {{ 'danger' if next_status == 'cancelled' else '' }}"
+                                type="submit" name="status" value="{{ next_status }}">
+                          {{ next_status|nice_status }}
+                        </button>
+                      {% endfor %}
+                    </div>
+                  </form>
+                  {% if service_request.status == 'pending' %}
+                    <form method="post" action="{{ url_for('mechanic.decline_request', request_id=service_request.id) }}">
+  {{ csrf_field() }}
+                      <button class="btn small danger" type="submit">Decline</button>
+                    </form>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="table-empty">
+      {% if selected_status %}No requests with status “{{ selected_status|nice_status }}”.
+      {% else %}No requests in your area yet.{% endif %}
+    </p>
+  {% endif %}
+</div>
+{% endblock %}

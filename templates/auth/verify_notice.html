@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Verify your email · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="auth-shell">
+  <div class="card">
+    <span class="badge warn mb-1">Action needed</span>
+    <h1>Verify your email address</h1>
+    <p class="muted">
+      We sent a verification link to <b>{{ current_user.email }}</b>. Open it to unlock your
+      {{ current_user.role_label|lower }} workspace. Links expire after 24 hours.
+    </p>
+
+    <div class="btn-row mt-2">
+      <form method="post" action="{{ url_for('auth.resend_verification') }}" class="inline">
+        {{ csrf_field() }}
+        <button class="btn" type="submit">Send a new link</button>
+      </form>
+      <a class="btn secondary" href="{{ url_for('auth.account') }}">Account settings</a>
+      <form method="post" action="{{ url_for('auth.logout') }}" class="inline">
+        {{ csrf_field() }}
+        <button class="btn secondary" type="submit">Sign out</button>
+      </form>
+    </div>
+
+    <p class="help mt-2">
+      {% if config.MAIL_SERVER %}
+        A verification link will be sent to your email address.
+      {% else %}
+        No SMTP server is configured in this demo, so the link is shown in the flash
+        message at the top of the page instead of being emailed.
+      {% endif %}
+    </p>
+  </div>
+</div>
+{% endblock %}

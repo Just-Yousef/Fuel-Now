@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}{{ app_name }} — fuel and mechanics, on demand{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="hero-copy">
+    <p class="eyebrow"><span class="eyebrow-mark"></span> Fuel, service, peace of mind</p>
+    <h1>Keep moving.<br><span>We’ll help with the rest.</span></h1>
+    <p class="hero-lede">
+      Find nearby fuel and trusted mechanics from wherever the road takes you.
+      Compare by distance, place a request, and follow every update in one place.
+    </p>
+    <div class="btn-row hero-actions">
+      <a class="btn" href="{{ url_for('auth.register') }}">Get started <span aria-hidden="true">→</span></a>
+      <a class="btn secondary" href="{{ url_for('auth.login') }}">Sign in</a>
+    </div>
+    <p class="hero-footnote"><span aria-hidden="true">◎</span> Nearby options, matched to your location</p>
+  </div>
+
+  <aside class="hero-showcase" aria-label="FuelNow service overview">
+    <div class="showcase-head">
+      <span class="showcase-status"><i></i> Help, close by</span>
+      <span class="showcase-caption">FUELNOW / 01</span>
+    </div>
+    <div class="showcase-map" aria-hidden="true">
+      <span class="map-route map-route-one"></span>
+      <span class="map-route map-route-two"></span>
+      <span class="map-route map-route-three"></span>
+      <span class="map-pin map-pin-one"><i></i></span>
+      <span class="map-pin map-pin-two"><i></i></span>
+      <span class="map-pin map-pin-three"><i></i></span>
+      <span class="map-you"><i></i></span>
+      <span class="map-label">YOUR AREA</span>
+    </div>
+    <div class="showcase-bottom">
+      <div>
+        <span class="showcase-caption">WHEN YOU NEED IT</span>
+        <strong>Fuel or a helping hand.</strong>
+      </div>
+      <span class="showcase-arrow" aria-hidden="true">↗</span>
+    </div>
+    <div class="showcase-services">
+      <span><i class="service-icon fuel-icon" aria-hidden="true">F</i> Fuel nearby</span>
+      <span><i class="service-icon mechanic-icon" aria-hidden="true">M</i> Mechanics</span>
+    </div>
+  </aside>
+</section>
+
+<section class="home-section">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">A better way to get there</p>
+      <h2>One platform. Every journey.</h2>
+    </div>
+    <p class="section-note">Choose your role to get started.</p>
+  </div>
+
+  <div class="grid cols-3 role-grid">
+  <a class="role-card" href="{{ url_for('auth.register', role='driver') }}">
+    <span class="role-index">01 / DRIVER</span>
+    <span class="role-arrow" aria-hidden="true">↗</span>
+    <h3>For the road ahead</h3>
+    <p class="muted mb-0">Find nearby fuel, place an order, or get a mechanic when you need one.</p>
+  </a>
+  <a class="role-card" href="{{ url_for('auth.register', role='station') }}">
+    <span class="role-index">02 / STATION</span>
+    <span class="role-arrow" aria-hidden="true">↗</span>
+    <h3>For fueling stations</h3>
+    <p class="muted mb-0">Manage your fuel list, update prices, and keep incoming orders moving.</p>
+  </a>
+  <a class="role-card" href="{{ url_for('auth.register', role='mechanic') }}">
+    <span class="role-index">03 / MECHANIC</span>
+    <span class="role-arrow" aria-hidden="true">↗</span>
+    <h3>For skilled mechanics</h3>
+    <p class="muted mb-0">Set your service area and availability, then handle nearby requests.</p>
+  </a>
+  </div>
+</section>
+
+<section class="home-section journey-section">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">Simple from the start</p>
+      <h2>Support for the miles ahead.</h2>
+    </div>
+    <p class="section-note">Clear steps. No guesswork.</p>
+  </div>
+
+  <div class="journey-grid">
+    <article class="journey-step">
+      <span class="journey-number">01</span>
+      <div>
+        <h3>Start with your location</h3>
+        <p>FuelNow sorts stations and available mechanics by distance from you.</p>
+      </div>
+    </article>
+    <article class="journey-step">
+      <span class="journey-number">02</span>
+      <div>
+        <h3>Choose what you need</h3>
+        <p>Check station fuel and prices, or tell a mechanic what’s going on.</p>
+      </div>
+    </article>
+    <article class="journey-step">
+      <span class="journey-number">03</span>
+      <div>
+        <h3>Follow every update</h3>
+        <p>See your order or service request progress from your own dashboard.</p>
+      </div>
+    </article>
+  </div>
+
+  <p class="home-note">Station and mechanic accounts are reviewed before they appear to drivers. Payments are settled at the pump in this demo.</p>
+</section>
+{% endblock %}

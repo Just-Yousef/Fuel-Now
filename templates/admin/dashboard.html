@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}Admin overview · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Platform overview</h1>
+    <p class="lede">Approvals, monitoring and account health across FuelNow.</p>
+  </div>
+  <div class="btn-row">
+    <a class="btn" href="{{ url_for('admin.users') }}">Manage users</a>
+    <a class="btn secondary" href="{{ url_for('admin.orders') }}">All orders</a>
+  </div>
+</div>
+
+<div class="grid cols-4 mb-2">
+  <div class="kpi"><div class="label">Drivers</div><div class="value">{{ stats.drivers }}</div></div>
+  <div class="kpi"><div class="label">Stations</div><div class="value">{{ stats.stations }}</div><div class="hint">{{ stats.pending_stations }} pending</div></div>
+  <div class="kpi"><div class="label">Mechanics</div><div class="value">{{ stats.mechanics }}</div><div class="hint">{{ stats.pending_mechanics }} pending</div></div>
+  <div class="kpi"><div class="label">Pending accounts</div><div class="value">{{ stats.pending_users }}</div><div class="hint">users awaiting review</div></div>
+</div>
+
+<div class="grid cols-4 mb-2">
+  <div class="kpi"><div class="label">Fuel orders</div><div class="value">{{ stats.orders }}</div><div class="hint">{{ stats.active_orders }} active</div></div>
+  <div class="kpi"><div class="label">Service requests</div><div class="value">{{ stats.requests }}</div><div class="hint">{{ stats.active_requests }} active</div></div>
+  <div class="kpi"><div class="label">Completed revenue</div><div class="value" style="font-size:1.2rem">{{ stats.revenue|money }}</div><div class="hint">{{ stats.litres|round(1) }} L</div></div>
+  <div class="kpi"><div class="label">Completed repairs</div><div class="value">{{ stats.completed_requests }}</div></div>
+</div>
+
+<div class="split">
+  <div class="card">
+    <div class="card-head">
+      <h2>Stations awaiting approval</h2>
+      <a class="btn small secondary" href="{{ url_for('admin.stations', status='pending') }}">All stations</a>
+    </div>
+    {% if pending_stations %}
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Station</th><th>Location</th><th>Owner</th><th>Action</th></tr></thead>
+          <tbody>
+            {% for station in pending_stations %}
+              <tr>
+                <td><b>{{ station.name }}</b><br><span class="muted" style="font-size:.8rem">{{ station.created_at|short_dt }}</span></td>
+                <td>{{ station.city }}<br><span class="mono muted" style="font-size:.75rem">{{ '%.4f'|format(station.latitude) }}, {{ '%.4f'|format(station.longitude) }}</span></td>
+                <td>{{ station.owner.email }}</td>
+                <td class="actions">
+                  <div class="btn-row">
+                    <form method="post" action="{{ url_for('admin.update_station_status', station_id=station.id) }}">
+  {{ csrf_field() }}
+                      <input type="hidden" name="status" value="approved">
+                      <button class="btn small" type="submit">Approve</button>
+                    </form>
+                    <form method="post" action="{{ url_for('admin.update_station_status', station_id=station.id) }}">
+  {{ csrf_field() }}
+                      <input type="hidden" name="status" value="deactivated">
+                      <button class="btn small danger" type="submit">Reject</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="table-empty">No stations waiting for review.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>Mechanics awaiting approval</h2>
+      <a class="btn small secondary" href="{{ url_for('admin.mechanics', status='pending') }}">All mechanics</a>
+    </div>
+    {% if pending_mechanics %}
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Mechanic</th><th>Area</th><th>Owner</th><th>Action</th></tr></thead>
+          <tbody>
+            {% for mechanic in pending_mechanics %}
+              <tr>
+                <td><b>{{ mechanic.business_name }}</b><br><span class="muted" style="font-size:.8rem">{{ mechanic.specialties }}</span></td>
+                <td>{{ mechanic.city }}<br><span class="muted" style="font-size:.8rem">{{ mechanic.service_radius_km|round|int }} km radius</span></td>
+                <td>{{ mechanic.user.email }}</td>
+                <td class="actions">
+                  <div class="btn-row">
+                    <form method="post" action="{{ url_for('admin.update_mechanic_status', mechanic_id=mechanic.id) }}">
+  {{ csrf_field() }}
+                      <input type="hidden" name="status" value="approved">
+                      <button class="btn small" type="submit">Approve</button>
+                    </form>
+                    <form method="post" action="{{ url_for('admin.update_mechanic_status', mechanic_id=mechanic.id) }}">
+  {{ csrf_field() }}
+                      <input type="hidden" name="status" value="deactivated">
+                      <button class="btn small danger" type="submit">Reject</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="table-empty">No mechanics waiting for review.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="split mt-2">
+  <div class="card">
+    <div class="card-head"><h2>Latest fuel orders</h2><a class="btn small secondary" href="{{ url_for('admin.orders') }}">All orders</a></div>
+    {% if recent_orders %}
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Ref</th><th>Driver</th><th>Station</th><th>Total</th><th>Status</th></tr></thead>
+          <tbody>
+            {% for order in recent_orders %}
+              <tr>
+                <td class="mono">{{ order.reference }}</td>
+                <td>{{ order.driver.full_name }}</td>
+                <td>{{ order.station.name }}</td>
+                <td>{{ order.total_price|money }}</td>
+                <td><span class="badge {{ 'bad' if order.status in bad_statuses else ('good' if order.status in good_statuses else 'info') }}">{{ order.status_label }}</span></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}<p class="table-empty">No orders yet.</p>{% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>Latest service requests</h2><a class="btn small secondary" href="{{ url_for('admin.requests_view') }}">All requests</a></div>
+    {% if recent_requests %}
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Ref</th><th>Driver</th><th>Mechanic</th><th>Issue</th><th>Status</th></tr></thead>
+          <tbody>
+            {% for service_request in recent_requests %}
+              <tr>
+                <td class="mono">{{ service_request.reference }}</td>
+                <td>{{ service_request.driver.full_name }}</td>
+                <td>{{ service_request.mechanic.business_name }}</td>
+                <td>{{ service_request.issue }}</td>
+                <td><span class="badge {{ 'bad' if service_request.status in bad_statuses else ('good' if service_request.status in good_statuses else 'info') }}">{{ service_request.status_label }}</span></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}<p class="table-empty">No service requests yet.</p>{% endif %}
+  </div>
+</div>
+{% endblock %}

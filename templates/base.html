@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ app_name }}{% endblock %}</title>
+  {#- CSRF token for fetch()/XHR calls (forms carry their own hidden field). -#}
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  {#- v= cache-buster: changes whenever any static file changes, so a redesign
+      is never hidden behind a stale browser/proxy cache. -#}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ static_v }}">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230a5238'/><path d='M11 7h7a3 3 0 013 3v15h-10z' fill='%234ade80'/><rect x='18' y='10' width='4' height='3' rx='1' fill='%23d9f0e6'/></svg>">
+</head>
+<body>
+{% set nav_items = [] %}
+{% if current_user.is_authenticated %}
+  {% if current_user.role == 'driver' %}
+    {% set nav_items = [
+      ('driver.dashboard', 'Dashboard', '/driver/'),
+      ('driver.stations', 'Find fuel', '/driver/stations'),
+      ('driver.mechanics', 'Find mechanic', '/driver/mechanics'),
+      ('driver.orders', 'My orders', '/driver/orders'),
+      ('driver.requests_view', 'My requests', '/driver/requests')
+    ] %}
+  {% elif current_user.role == 'station' %}
+    {% set nav_items = [
+      ('station.dashboard', 'Dashboard', '/station/'),
+      ('station.orders', 'Orders', '/station/orders'),
+      ('station.products', 'Fuel & prices', '/station/products'),
+      ('station.profile', 'Station profile', '/station/profile')
+    ] %}
+  {% elif current_user.role == 'mechanic' %}
+    {% set nav_items = [
+      ('mechanic.dashboard', 'Dashboard', '/mechanic/'),
+      ('mechanic.requests_view', 'Requests', '/mechanic/requests'),
+      ('mechanic.availability', 'Availability', '/mechanic/availability'),
+      ('mechanic.profile', 'Profile', '/mechanic/profile')
+    ] %}
+  {% elif current_user.role == 'admin' %}
+    {% set nav_items = [
+      ('admin.dashboard', 'Overview', '/admin/'),
+      ('admin.users', 'Users', '/admin/users'),
+      ('admin.stations', 'Stations', '/admin/stations'),
+      ('admin.mechanics', 'Mechanics', '/admin/mechanics'),
+      ('admin.orders', 'Orders', '/admin/orders'),
+      ('admin.requests_view', 'Service requests', '/admin/requests')
+    ] %}
+  {% endif %}
+{% endif %}
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="{{ url_for('public.index') }}">
+      <span class="dot"></span> {{ app_name }}
+    </a>
+
+    <details class="nav-menu" open>
+      <summary class="nav-toggle">
+        <span class="nav-toggle-icon" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span>Menu</span>
+      </summary>
+      <nav class="topnav {{ 'signed-in' if current_user.is_authenticated else 'signed-out' }}" aria-label="Main navigation">
+        {% if current_user.is_authenticated %}
+          <div class="nav-links">
+            {% for endpoint, label, match in nav_items %}
+              <a href="{{ url_for(endpoint) }}" data-match="{{ match }}">{{ label }}</a>
+            {% endfor %}
+          </div>
+          <div class="nav-profile">
+            <a class="account-link" href="{{ url_for('auth.account') }}" data-match="/account">
+              <span class="user-avatar" aria-hidden="true">{{ current_user.full_name[:1]|upper }}</span>
+              <span class="account-copy">
+                <strong>{{ current_user.full_name }}</strong>
+                <small>{{ current_user.role_label }}</small>
+              </span>
+            </a>
+            <form method="post" action="{{ url_for('auth.logout') }}" class="inline">
+              {{ csrf_field() }}
+              <button class="btn small secondary signout-btn" type="submit">Sign out</button>
+            </form>
+          </div>
+        {% else %}
+          <a href="{{ url_for('auth.login') }}" data-match="/login">Sign in</a>
+          <a class="btn small" href="{{ url_for('auth.register') }}">Create account</a>
+        {% endif %}
+      </nav>
+    </details>
+  </div>
+</header>
+
+<main class="wrap">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-stack">
+        {% for category, message in messages %}
+          <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="footer">
+  {{ app_name }} · vehicle fuel delivery &amp; roadside mechanic matching · demo project
+</footer>
+
+<script src="{{ url_for('static', filename='js/app.js') }}?v={{ static_v }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

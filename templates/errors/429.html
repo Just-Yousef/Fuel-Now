@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Too many requests · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="auth-shell">
+  <div class="card center">
+    <h1>429 · Too many requests</h1>
+    <p class="muted">You've made too many attempts in a short period. Please wait a moment and try again.</p>
+    
+    <div class="btn-row mt-2" style="justify-content:center">
+      <a class="btn" href="{{ url_for(current_user.home_endpoint) if current_user.is_authenticated else url_for('public.index') }}">Take me home</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

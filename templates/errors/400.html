@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Bad request · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="auth-shell">
+  <div class="card center">
+    <h1>400 · Bad request</h1>
+    <p class="muted">The request could not be processed. If you submitted a form, reload the page and try again.</p>
+    <p class="help">{{ message }}</p>
+    <div class="btn-row mt-2" style="justify-content:center">
+      <a class="btn" href="{{ url_for(current_user.home_endpoint) if current_user.is_authenticated else url_for('public.index') }}">Take me home</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

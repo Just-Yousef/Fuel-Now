@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Email verified' if ok else 'Invalid link' }} · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="auth-shell">
+  <div class="card center">
+    {% if ok %}
+      <span class="badge good mb-1">Verified</span>
+      <h1>Email address verified</h1>
+      <p class="muted">Your account is confirmed. You can now sign in and use your workspace.</p>
+      <div class="btn-row mt-2" style="justify-content:center">
+        <a class="btn" href="{{ url_for('auth.login') }}">Sign in</a>
+      </div>
+    {% else %}
+      <span class="badge bad mb-1">Link problem</span>
+      <h1>This link is invalid or expired</h1>
+      <p class="muted">Verification links are single-use and expire after 24 hours.</p>
+      <div class="btn-row mt-2" style="justify-content:center">
+        <a class="btn" href="{{ url_for('auth.login') }}">Sign in to request a new link</a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

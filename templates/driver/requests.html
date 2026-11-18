@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% from "driver/_macros.html" import request_steps with context %}
+{% block title %}My service requests · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>My service requests</h1>
+    <p class="lede">Every mechanic request you've sent, with its live status.</p>
+  </div>
+  <a class="btn" href="{{ url_for('driver.mechanics') }}">Request a mechanic</a>
+</div>
+
+{% if requests %}
+  <div class="list">
+    {% for service_request in requests %}
+      <div class="card tight">
+        <div class="flex-between">
+          <div>
+            <h3 class="mb-0">{{ service_request.issue }}</h3>
+            <div class="muted" style="font-size:.85rem">
+              {{ service_request.mechanic.business_name }} · {{ service_request.mechanic.city }} ·
+              <span class="mono">{{ service_request.reference }}</span> ·
+              sent {{ service_request.created_at|short_dt }}
+            </div>
+          </div>
+          <div class="right">
+            <span class="badge {{ 'bad' if service_request.status in bad_statuses else ('good' if service_request.status in good_statuses else 'info') }}">
+              {{ service_request.status_label }}
+            </span>
+            <div class="muted" style="font-size:.8rem">
+              {{ '%.1f km away'|format(service_request.distance_km) if service_request.distance_km is not none else '' }}
+            </div>
+          </div>
+        </div>
+
+        {{ request_steps(service_request.status) }}
+
+        {% if service_request.description or service_request.vehicle %}
+          <p class="muted mt-2" style="font-size:.87rem">
+            {% if service_request.vehicle %}<b>{{ service_request.vehicle }}</b>{% endif %}
+            {% if service_request.description %} — {{ service_request.description }}{% endif %}
+          </p>
+        {% endif %}
+
+        <div class="flex-between mt-2">
+          <div class="muted" style="font-size:.82rem">
+            Mechanic phone: {{ service_request.mechanic.user.phone or 'not provided' }}
+            {% if service_request.mechanic.hourly_rate %} · {{ service_request.mechanic.hourly_rate|money }}/hr{% endif %}
+          </div>
+          {% if service_request.can_cancel %}
+            <form method="post" action="{{ url_for('driver.cancel_request', request_id=service_request.id) }}" class="inline">
+  {{ csrf_field() }}
+              <button class="btn small danger" type="submit">Cancel request</button>
+            </form>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card">
+    <p class="table-empty">No service requests yet. <a href="{{ url_for('driver.mechanics') }}">Find a mechanic near you</a>.</p>
+  </div>
+{% endif %}
+{% endblock %}

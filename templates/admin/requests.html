@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}All service requests · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>All service requests</h1>
+    <p class="lede">{{ stats.requests }} requests · {{ stats.completed_requests }} completed · {{ stats.active_requests }} active.</p>
+  </div>
+  <a class="btn secondary" href="{{ url_for('admin.dashboard') }}">Overview</a>
+</div>
+
+<div class="filter-bar">
+  <div class="chip-row">
+    <a class="chip {{ 'active' if not selected_status }}" href="{{ url_for('admin.requests_view') }}">All</a>
+    {% for status in request_statuses %}
+      <a class="chip {{ 'active' if selected_status == status }}"
+         href="{{ url_for('admin.requests_view', status=status) }}">{{ status|nice_status }}</a>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card">
+  {% if requests %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Reference</th><th>Driver</th><th>Mechanic</th><th>Issue</th><th>Distance</th><th>Received</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          {% for service_request in requests %}
+            <tr>
+              <td class="mono">{{ service_request.reference }}</td>
+              <td>{{ service_request.driver.full_name }}<br><span class="muted" style="font-size:.78rem">{{ service_request.driver.email }}</span></td>
+              <td>{{ service_request.mechanic.business_name }}<br><span class="muted" style="font-size:.78rem">{{ service_request.mechanic.city }}</span></td>
+              <td>{{ service_request.issue }}
+                {% if service_request.description %}<br><span class="muted" style="font-size:.78rem">{{ service_request.description }}</span>{% endif %}
+              </td>
+              <td>{{ '%.1f km'|format(service_request.distance_km) if service_request.distance_km is not none else '—' }}</td>
+              <td class="nowrap">{{ service_request.created_at|short_dt }}</td>
+              <td>
+                <span class="badge {{ 'bad' if service_request.status in bad_statuses else ('good' if service_request.status in good_statuses else 'info') }}">
+                  {{ service_request.status_label }}
+                </span>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="table-empty">No service requests{% if selected_status %} with this status{% endif %} yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

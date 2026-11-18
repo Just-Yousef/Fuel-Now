@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% from "driver/_macros.html" import location_banner, station_card with context %}
+{% block title %}Find fuel · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Fuel stations near you</h1>
+    <p class="lede">Sorted nearest-first from your current position. Prices are per litre.</p>
+  </div>
+</div>
+
+{{ location_banner(location, 'driver.stations') }}
+
+<form class="filter-bar" method="get" action="{{ url_for('driver.stations') }}" id="stations-filter">
+  {% if session_token %}<input type="hidden" name="sid" value="{{ session_token }}">{% endif %}
+  <input type="hidden" name="lat" value="{{ '%.6f'|format(origin.latitude) if origin else '' }}">
+  <input type="hidden" name="lng" value="{{ '%.6f'|format(origin.longitude) if origin else '' }}">
+  <div class="field">
+    <label for="radius">Radius (km)</label>
+    <input type="number" id="radius" name="radius" min="1" max="{{ config.MAX_SEARCH_RADIUS_KM }}" step="1" value="{{ radius|round|int }}">
+  </div>
+  <div class="field">
+    <label for="fuel_type">Fuel type</label>
+    <select id="fuel_type" name="fuel_type">
+      <option value="">Any fuel</option>
+      {% for option in fuel_types %}
+        <option value="{{ option }}" {{ 'selected' if option == fuel_type }}>{{ option }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button class="btn secondary" type="submit">Apply filters</button>
+  <button class="btn secondary" type="button" data-geo-form="stations-filter">Use my location</button>
+</form>
+
+{% if origin is none %}
+  <div class="card"><p class="table-empty">We need your location to sort stations by distance. Tap “Use my location”.</p></div>
+{% elif results %}
+  <p class="muted mb-1">{{ results|length }} station{{ '' if results|length == 1 else 's' }} within {{ radius|round|int }} km{% if fuel_type %} selling {{ fuel_type }}{% endif %}.</p>
+  <div class="list">
+    {% for result in results %}
+      {{ station_card(result, origin, loop.index) }}
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card">
+    <p class="table-empty">
+      No approved stations found within {{ radius|round|int }} km{% if fuel_type %} selling {{ fuel_type }}{% endif %}.
+      Try widening the radius or clearing the fuel filter.
+    </p>
+  </div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script nonce="{{ csp_nonce() }}">
+  LocationHelper.init({ primaryUrl: "{{ url_for('driver.save_location') }}" });
+</script>
+{% endblock %}

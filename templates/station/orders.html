@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Orders · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Orders at {{ station.name }}</h1>
+    <p class="lede">Move an order through accepted → fueling → completed. Cancelling is final.</p>
+  </div>
+  <a class="btn secondary" href="{{ url_for('station.dashboard') }}">Dashboard</a>
+</div>
+
+<div class="filter-bar">
+  <div class="chip-row">
+    <a class="chip {{ 'active' if not selected_status }}" href="{{ url_for('station.orders') }}">All</a>
+    {% for status in order_statuses %}
+      <a class="chip {{ 'active' if selected_status == status }}"
+         href="{{ url_for('station.orders', status=status) }}">{{ status|nice_status }}</a>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card">
+  {% if orders %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Reference</th><th>Driver</th><th>Fuel</th><th>Unit price</th><th>Qty</th>
+            <th>Total</th><th>Placed</th><th>Status</th><th>Update</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for order in orders %}
+            <tr>
+              <td class="mono">{{ order.reference }}</td>
+              <td>
+                {{ order.driver.full_name }}<br>
+                <span class="muted" style="font-size:.8rem">{{ order.driver.phone or order.driver.email }}</span>
+                {% if order.delivery_note %}
+                  <br><span class="muted" style="font-size:.8rem">“{{ order.delivery_note }}”</span>
+                {% endif %}
+              </td>
+              <td>{{ order.fuel_type }}</td>
+              <td>{{ order.unit_price|money }}</td>
+              <td>{{ order.quantity_litres|round(1) }} L</td>
+              <td><b>{{ order.total_price|money }}</b></td>
+              <td class="nowrap">{{ order.created_at|short_dt }}</td>
+              <td>
+                <span class="badge {{ 'bad' if order.status in bad_statuses else ('good' if order.status in good_statuses else 'info') }}">
+                  {{ order.status_label }}
+                </span>
+              </td>
+              <td class="actions">
+                {% if transitions.get(order.status) %}
+                  <form method="post" action="{{ url_for('station.update_order_status', order_id=order.id) }}">
+  {{ csrf_field() }}
+                    <input type="hidden" name="next" value="{{ request.full_path }}">
+                    <div class="btn-row">
+                      {% for next_status in transitions.get(order.status, ()) %}
+                        <button class="btn small {{ 'danger' if next_status == 'cancelled' else '' }}"
+                                type="submit" name="status" value="{{ next_status }}">
+                          {{ next_status|nice_status }}
+                        </button>
+                      {% endfor %}
+                    </div>
+                  </form>
+                {% else %}
+                  <span class="muted">Closed</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="table-empty">
+      {% if selected_status %}No orders with status “{{ selected_status|nice_status }}”.{% else %}No orders yet.{% endif %}
+    </p>
+  {% endif %}
+</div>
+{% endblock %}

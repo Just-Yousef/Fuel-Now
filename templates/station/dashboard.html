@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Station dashboard · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ station.name }}</h1>
+    <p class="lede">
+      {{ station.address }}, {{ station.city }} ·
+      <span class="badge {{ 'good' if station.status == 'approved' else ('bad' if station.status == 'deactivated' else 'warn') }}">
+        {{ station.status|nice_status }}
+      </span>
+      <span class="badge {{ 'good' if station.is_open else 'warn' }}">{{ 'Open' if station.is_open else 'Closed' }}</span>
+    </p>
+  </div>
+  <div class="btn-row">
+    <a class="btn" href="{{ url_for('station.orders') }}">All orders</a>
+    <a class="btn secondary" href="{{ url_for('station.products') }}">Fuel &amp; prices</a>
+  </div>
+</div>
+
+{% if station.status != 'approved' %}
+  <div class="flash warning">
+    This station is <b>{{ station.status|nice_status }}</b>, so it is not shown to drivers yet.
+    An administrator must approve it from the admin page.
+  </div>
+{% endif %}
+
+<div class="grid cols-4 mb-2">
+  <div class="kpi"><div class="label">Awaiting action</div><div class="value">{{ stats.pending }}</div><div class="hint">new orders</div></div>
+  <div class="kpi"><div class="label">In progress</div><div class="value">{{ stats.active }}</div><div class="hint">accepted + fueling</div></div>
+  <div class="kpi"><div class="label">Completed</div><div class="value">{{ stats.completed }}</div><div class="hint">{{ stats.litres|round(1) }} L dispensed</div></div>
+  <div class="kpi"><div class="label">Revenue (completed)</div><div class="value" style="font-size:1.15rem">{{ stats.revenue|money }}</div><div class="hint">{{ stats.products }} fuel types listed</div></div>
+</div>
+
+<div class="card mb-2">
+  <div class="card-head">
+    <h2>Incoming orders</h2>
+    <span class="muted">{{ incoming|length }} order{{ '' if incoming|length == 1 else 's' }}</span>
+  </div>
+
+  {% if incoming %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Reference</th><th>Driver</th><th>Fuel</th><th>Qty</th><th>Total</th>
+            <th>Placed</th><th>Status</th><th>Next step</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for order in incoming %}
+            <tr>
+              <td class="mono">{{ order.reference }}</td>
+              <td>
+                {{ order.driver.full_name }}<br>
+                <span class="muted" style="font-size:.8rem">{{ order.driver.phone or order.driver.email }}</span>
+                {% if order.vehicle_plate %}<br><span class="muted" style="font-size:.8rem">{{ order.vehicle_plate }}</span>{% endif %}
+              </td>
+              <td>{{ order.fuel_type }}</td>
+              <td>{{ order.quantity_litres|round(1) }} L</td>
+              <td>{{ order.total_price|money }}</td>
+              <td class="nowrap">{{ order.created_at|short_dt }}</td>
+              <td><span class="badge info">{{ order.status_label }}</span></td>
+              <td class="actions">
+                <div class="btn-row">
+                  {% for next_status in transitions.get(order.status, ()) %}
+                    <form method="post" action="{{ url_for('station.update_order_status', order_id=order.id) }}" class="inline">
+  {{ csrf_field() }}
+                      <input type="hidden" name="status" value="{{ next_status }}">
+                      <input type="hidden" name="next" value="{{ url_for('station.dashboard') }}">
+                      <button class="btn small {{ 'danger' if next_status == 'cancelled' else '' }}" type="submit">
+                        {{ next_status|nice_status }}
+                      </button>
+                    </form>
+                  {% else %}
+                    <span class="muted">—</span>
+                  {% endfor %}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="table-empty">No orders waiting. New driver orders will appear here instantly.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h2>Recent activity</h2>
+    <a class="btn small secondary" href="{{ url_for('station.orders') }}">View all</a>
+  </div>
+  {% if recent %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Reference</th><th>Driver</th><th>Fuel</th><th>Total</th><th>Updated</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for order in recent %}
+            <tr>
+              <td class="mono">{{ order.reference }}</td>
+              <td>{{ order.driver.full_name }}</td>
+              <td>{{ order.fuel_type }} · {{ order.quantity_litres|round(1) }} L</td>
+              <td>{{ order.total_price|money }}</td>
+              <td class="nowrap">{{ order.updated_at|short_dt }}</td>
+              <td>
+                <span class="badge {{ 'bad' if order.status in bad_statuses else ('good' if order.status in good_statuses else 'info') }}">
+                  {{ order.status_label }}
+                </span>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="table-empty">No orders yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

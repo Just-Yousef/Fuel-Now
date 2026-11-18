@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}All fuel orders · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>All fuel orders</h1>
+    <p class="lede">Platform-wide monitoring. {{ stats.orders }} orders · {{ stats.revenue|money }} completed revenue.</p>
+  </div>
+  <a class="btn secondary" href="{{ url_for('admin.dashboard') }}">Overview</a>
+</div>
+
+<div class="filter-bar">
+  <div class="chip-row">
+    <a class="chip {{ 'active' if not selected_status }}" href="{{ url_for('admin.orders') }}">All</a>
+    {% for status in order_statuses %}
+      <a class="chip {{ 'active' if selected_status == status }}"
+         href="{{ url_for('admin.orders', status=status) }}">{{ status|nice_status }}</a>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card">
+  {% if orders %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Reference</th><th>Driver</th><th>Station</th><th>Fuel</th><th>Qty</th><th>Total</th><th>Placed</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          {% for order in orders %}
+            <tr>
+              <td class="mono">{{ order.reference }}</td>
+              <td>{{ order.driver.full_name }}<br><span class="muted" style="font-size:.78rem">{{ order.driver.email }}</span></td>
+              <td>{{ order.station.name }}<br><span class="muted" style="font-size:.78rem">{{ order.station.city }}</span></td>
+              <td>{{ order.fuel_type }}</td>
+              <td>{{ order.quantity_litres|round(1) }} L</td>
+              <td>{{ order.total_price|money }}</td>
+              <td class="nowrap">{{ order.created_at|short_dt }}</td>
+              <td>
+                <span class="badge {{ 'bad' if order.status in bad_statuses else ('good' if order.status in good_statuses else 'info') }}">
+                  {{ order.status_label }}
+                </span>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="table-empty">No orders{% if selected_status %} with this status{% endif %} yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

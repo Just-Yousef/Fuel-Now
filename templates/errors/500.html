@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Server error · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="auth-shell">
+  <div class="card center">
+    <h1>500 · Something went wrong</h1>
+    <p class="muted">The request could not be completed. The transaction was rolled back — please try again.</p>
+    <div class="btn-row mt-2" style="justify-content:center">
+      <a class="btn" href="{{ url_for('public.index') }}">Home</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

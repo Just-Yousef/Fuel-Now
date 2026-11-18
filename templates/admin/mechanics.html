@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% from "admin/_status_forms.html" import status_controls %}
+{% block title %}Mechanics · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Mechanics</h1>
+    <p class="lede">Approve mechanics before they can be matched with drivers. Deactivating removes them from search.</p>
+  </div>
+  <a class="btn secondary" href="{{ url_for('admin.dashboard') }}">Overview</a>
+</div>
+
+<form class="filter-bar" method="get">
+  {% if session_token %}<input type="hidden" name="sid" value="{{ session_token }}">{% endif %}
+  <div class="field">
+    <label for="status">Status</label>
+    <select id="status" name="status">
+      <option value="">Any status</option>
+      {% for status in ['pending', 'approved', 'deactivated'] %}
+        <option value="{{ status }}" {{ 'selected' if selected_status == status }}>{{ status|nice_status }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button class="btn secondary" type="submit">Filter</button>
+</form>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Mechanic</th><th>Area</th><th>Owner account</th><th>Availability</th><th>Requests</th><th>Status</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for mechanic in mechanics %}
+          <tr>
+            <td>
+              <b>{{ mechanic.business_name }}</b><br>
+              <span class="muted" style="font-size:.8rem">{{ mechanic.specialties }}</span>
+              {% if mechanic.hourly_rate %}<br><span class="muted" style="font-size:.8rem">{{ mechanic.hourly_rate|money }}/hr</span>{% endif %}
+            </td>
+            <td>
+              {{ mechanic.city }}<br>
+              <span class="badge info">Covers {{ mechanic.service_radius_km|round|int }} km</span><br>
+              <span class="mono muted" style="font-size:.75rem">{{ '%.4f'|format(mechanic.latitude) }}, {{ '%.4f'|format(mechanic.longitude) }}</span>
+            </td>
+            <td>{{ mechanic.user.email }}<br><span class="muted" style="font-size:.8rem">{{ mechanic.user.status|nice_status }}</span></td>
+            <td><span class="badge {{ 'good' if mechanic.available else 'warn' }}">{{ 'Available' if mechanic.available else 'Unavailable' }}</span></td>
+            <td>{{ mechanic.requests|length }}</td>
+            <td>
+              <span class="badge {{ 'bad' if mechanic.status == 'deactivated' else ('good' if mechanic.status == 'approved' else 'warn') }}">
+                {{ mechanic.status|nice_status }}
+              </span>
+            </td>
+            <td class="actions">{{ status_controls('admin.update_mechanic_status', mechanic.id, mechanic.status, request.full_path) }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="7" class="table-empty">No mechanics match this filter.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

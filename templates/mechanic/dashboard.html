@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Mechanic dashboard · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ mechanic.business_name }}</h1>
+    <p class="lede">
+      {{ mechanic.city }} ·
+      <span class="badge {{ 'good' if mechanic.status == 'approved' else ('bad' if mechanic.status == 'deactivated' else 'warn') }}">{{ mechanic.status|nice_status }}</span>
+      <span class="badge {{ 'good' if mechanic.available else 'warn' }}">{{ 'Available' if mechanic.available else 'Unavailable' }}</span>
+      <span class="badge info">Covers {{ mechanic.service_radius_km|round|int }} km</span>
+    </p>
+  </div>
+  <div class="btn-row">
+    <a class="btn" href="{{ url_for('mechanic.requests_view') }}">All requests</a>
+    <a class="btn secondary" href="{{ url_for('mechanic.availability') }}">Set availability</a>
+  </div>
+</div>
+
+{% if mechanic.status != 'approved' %}
+  <div class="flash warning">
+    Your profile is <b>{{ mechanic.status|nice_status }}</b> — it is not shown to drivers until an
+    administrator approves it.
+  </div>
+{% endif %}
+{% if not mechanic.available %}
+  <div class="flash warning">
+    You are marked <b>unavailable</b> and will not appear in driver searches. Turn availability on
+    to start receiving requests.
+  </div>
+{% endif %}
+
+<div class="grid cols-4 mb-2">
+  <div class="kpi"><div class="label">New requests</div><div class="value">{{ stats.pending }}</div><div class="hint">inside your area</div></div>
+  <div class="kpi"><div class="label">Active jobs</div><div class="value">{{ stats.active }}</div></div>
+  <div class="kpi"><div class="label">Completed</div><div class="value">{{ stats.completed }}</div></div>
+  <div class="kpi"><div class="label">Service radius</div><div class="value">{{ mechanic.service_radius_km|round|int }} km</div><div class="hint">around {{ mechanic.city }}</div></div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h2>Requests matching your area</h2>
+    <span class="muted">{{ matched|length }} request{{ '' if matched|length == 1 else 's' }}, nearest first</span>
+  </div>
+
+  {% if matched %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Reference</th><th>Driver</th><th>Issue</th><th>Distance</th><th>Received</th><th>Status</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+          {% for service_request, distance in matched %}
+            <tr>
+              <td class="mono">{{ service_request.reference }}</td>
+              <td>
+                {{ service_request.driver.full_name }}<br>
+                <span class="muted" style="font-size:.8rem">{{ service_request.driver.phone or service_request.driver.email }}</span>
+                {% if service_request.vehicle %}<br><span class="muted" style="font-size:.8rem">{{ service_request.vehicle }}</span>{% endif %}
+              </td>
+              <td>
+                <b>{{ service_request.issue }}</b>
+                {% if service_request.description %}
+                  <br><span class="muted" style="font-size:.8rem">{{ service_request.description }}</span>
+                {% endif %}
+              </td>
+              <td class="nowrap">{{ '%.1f km'|format(distance) }}</td>
+              <td class="nowrap">{{ service_request.created_at|short_dt }}</td>
+              <td>
+                <span class="badge {{ 'bad' if service_request.status in bad_statuses else ('good' if service_request.status in good_statuses else 'info') }}">
+                  {{ service_request.status_label }}
+                </span>
+              </td>
+              <td class="actions">
+                <form method="post" action="{{ url_for('mechanic.update_request_status', request_id=service_request.id) }}">
+  {{ csrf_field() }}
+                  <input type="hidden" name="next" value="{{ url_for('mechanic.dashboard') }}">
+                  <div class="btn-row">
+                    {% for next_status in transitions.get(service_request.status, ()) %}
+                      <button class="btn small {{ 'danger' if next_status == 'cancelled' else '' }}"
+                              type="submit" name="status" value="{{ next_status }}">
+                        {{ next_status|nice_status }}
+                      </button>
+                    {% else %}
+                      <span class="muted">Closed</span>
+                    {% endfor %}
+                  </div>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="table-empty">
+      No matching requests right now. Keep availability on and your service radius up to date.
+    </p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Awaiting approval · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="auth-shell">
+  <div class="card">
+    <span class="badge warn mb-1">Pending review</span>
+    <h1>Your account is awaiting approval</h1>
+    <p class="muted">
+      Thanks, {{ current_user.full_name }}. An administrator needs to approve your
+      {{ current_user.role_label|lower }} account before it becomes visible to drivers.
+      This usually takes a few minutes in a live deployment.
+    </p>
+
+    <table class="mt-2">
+      <tr><th>Account</th><td>{{ current_user.email }}</td></tr>
+      <tr><th>Type</th><td>{{ current_user.role_label }}</td></tr>
+      <tr><th>Status</th><td><span class="badge warn">Pending</span></td></tr>
+    </table>
+
+    <div class="btn-row mt-2">
+      <a class="btn secondary" href="{{ url_for('auth.account') }}">Edit my details</a>
+      <form method="post" action="{{ url_for('auth.logout') }}" class="inline">
+  {{ csrf_field() }}
+        <button class="btn danger" type="submit">Sign out</button>
+      </form>
+    </div>
+    <p class="muted mt-2" style="font-size:.85rem">
+      Signed in as an administrator by mistake? Sign out and use the admin demo account.
+    </p>
+  </div>
+</div>
+{% endblock %}

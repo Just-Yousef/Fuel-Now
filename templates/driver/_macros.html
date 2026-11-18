@@ -1,0 +1,174 @@
+{% macro location_banner(location, endpoint) %}
+  {% if location.state == 'ok' %}
+    <div class="location-banner">
+      <span>
+        📍 Distances measured from
+        <b class="mono">{{ '%.4f'|format(location.latitude) }}, {{ '%.4f'|format(location.longitude) }}</b>
+        {% if location.from_browser %}<span class="badge brand">live GPS</span>{% else %}<span class="badge info">saved position</span>{% endif %}
+      </span>
+      <button class="btn small secondary" type="button" data-geolocate>Update my location</button>
+      <span class="muted" data-geo-status></span>
+    </div>
+  {% else %}
+    <div class="location-banner missing">
+      <span>
+        We don't know where you are yet. Allow the browser location prompt so we can sort
+        stations and mechanics by distance.
+      </span>
+      <button class="btn small" type="button" data-geolocate>Use my location</button>
+      <span class="muted" data-geo-status></span>
+    </div>
+  {% endif %}
+{% endmacro %}
+
+{% macro station_card(result, origin, index) %}
+  {% set station = result.entity %}
+  <div class="listing">
+    <div class="main">
+      <div class="title">{{ station.name }}</div>
+      <div class="meta">
+        {{ station.address }}, {{ station.city }} · Open {{ station.opening_hours }}
+        {% if not station.is_open %}<span class="badge warn">Closed</span>{% endif %}
+      </div>
+      <div class="price-line mt-1">
+        {% for product in station.products %}
+          <span class="badge {{ 'good' if product.in_stock else 'bad' }}">
+            {{ product.fuel_type }} · {{ product.price_per_litre|money }}/L
+          </span>
+        {% else %}
+          <span class="muted">No fuel types listed yet.</span>
+        {% endfor %}
+      </div>
+
+      {% if station.products %}
+        <details class="mt-2">
+          <summary class="btn small secondary" style="display:inline-flex">Order fuel here</summary>
+          <form method="post" action="{{ url_for('driver.place_order') }}" class="mt-2" data-order-form>
+  {{ csrf_field() }}
+            <input type="hidden" name="station_id" value="{{ station.id }}">
+            <input type="hidden" name="next" value="{{ request.full_path }}">
+            {% if origin %}
+              <input type="hidden" name="lat" value="{{ '%.6f'|format(origin.latitude) }}">
+              <input type="hidden" name="lng" value="{{ '%.6f'|format(origin.longitude) }}">
+            {% endif %}
+            <div class="field-row">
+              <div class="field">
+                <label>Fuel type</label>
+                <select name="fuel_type" required>
+                  {% for product in station.products %}
+                    <option value="{{ product.fuel_type }}" data-price="{{ product.price_per_litre }}" {{ 'disabled' if not product.in_stock }}>
+                      {{ product.fuel_type }} — {{ product.price_per_litre|money }}/L{{ ' (out of stock)' if not product.in_stock }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="field">
+                <label>Quantity (litres)</label>
+                <input type="number" name="quantity_litres" min="1" max="500" step="0.5" value="20" required>
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label>Vehicle plate (optional)</label>
+                <input type="text" name="vehicle_plate" placeholder="ABC-123-XY">
+              </div>
+              <div class="field">
+                <label>Note for the station (optional)</label>
+                <input type="text" name="delivery_note" placeholder="Fill the tank, no jerrycan">
+              </div>
+            </div>
+            <div class="flex-between">
+              <div>Estimated total: <b data-total data-currency="{{ currency }}">—</b></div>
+              <button class="btn" type="submit">Place order</button>
+            </div>
+            <p class="help">Payment is settled at the pump in this demo — no card details are collected.</p>
+          </form>
+        </details>
+      {% endif %}
+    </div>
+    <div class="side">
+      <div class="distance">{{ result.distance_label }}</div>
+      <div class="muted" style="font-size:.78rem">away</div>
+    </div>
+  </div>
+{% endmacro %}
+
+{% macro mechanic_card(result, origin) %}
+  {% set mechanic = result.entity %}
+  <div class="listing">
+    <div class="main">
+      <div class="title">{{ mechanic.business_name }}</div>
+      <div class="meta">
+        {{ mechanic.specialties }} · {{ mechanic.city }}
+        {% if mechanic.hourly_rate %}· {{ mechanic.hourly_rate|money }}/hr{% endif %}
+      </div>
+      <div class="tags">
+        <span class="badge {{ 'good' if mechanic.available else 'warn' }}">
+          {{ 'Available now' if mechanic.available else 'Not accepting jobs' }}
+        </span>
+        <span class="badge info">Covers {{ mechanic.service_radius_km|round|int }} km</span>
+        {% if mechanic.address %}<span class="badge">{{ mechanic.address }}</span>{% endif %}
+      </div>
+
+      {% if mechanic.available and origin %}
+        <details class="mt-2">
+          <summary class="btn small secondary" style="display:inline-flex">Request this mechanic</summary>
+          <form method="post" action="{{ url_for('driver.create_request') }}" class="mt-2">
+  {{ csrf_field() }}
+            <input type="hidden" name="mechanic_id" value="{{ mechanic.id }}">
+            <input type="hidden" name="next" value="{{ request.full_path }}">
+            <input type="hidden" name="lat" value="{{ '%.6f'|format(origin.latitude) }}">
+            <input type="hidden" name="lng" value="{{ '%.6f'|format(origin.longitude) }}">
+            <div class="field">
+              <label>What do you need help with?</label>
+              <select name="issue" required>
+                {% for option in issues %}
+                  <option value="{{ option }}">{{ option }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="field">
+              <label>Vehicle</label>
+              <input type="text" name="vehicle" placeholder="Toyota Corolla 2012">
+            </div>
+            <div class="field">
+              <label>Describe the problem</label>
+              <textarea name="description" placeholder="Won't start after refuelling, dashboard lights on…"></textarea>
+            </div>
+            <button class="btn" type="submit">Send request</button>
+          </form>
+        </details>
+      {% elif not origin %}
+        <p class="help mt-1">Allow location access to request this mechanic.</p>
+      {% endif %}
+    </div>
+    <div class="side">
+      <div class="distance">{{ result.distance_label }}</div>
+      <div class="muted" style="font-size:.78rem">from you</div>
+    </div>
+  </div>
+{% endmacro %}
+
+{% macro progress_steps(status, sequence) %}
+  {#- A status outside the normal sequence (e.g. cancelled) marks nothing as
+      complete, so guard the index lookups instead of calling .index(status). -#}
+  {% set position = sequence.index(status) if status in sequence else -1 %}
+  <div class="steps">
+    {% for step in sequence %}
+      <span class="step {{ 'done' if position > loop.index0 else ('current' if step == status else '') }}">
+        {{ step|nice_status }}
+      </span>
+    {% endfor %}
+    {% if status not in sequence %}
+      <span class="step cancelled">{{ status|nice_status }}</span>
+    {% endif %}
+  </div>
+{% endmacro %}
+
+{% macro order_steps(status) %}
+  {{ progress_steps(status, ['pending', 'accepted', 'fueling', 'completed']) }}
+{% endmacro %}
+
+{% macro request_steps(status) %}
+  {{ progress_steps(status, ['pending', 'accepted', 'en_route', 'in_progress', 'completed']) }}
+{% endmacro %}

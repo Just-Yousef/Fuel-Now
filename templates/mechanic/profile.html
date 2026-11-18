@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Mechanic profile · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Business profile</h1>
+    <p class="lede">What drivers see when you appear in their nearby list.</p>
+  </div>
+  <span class="badge {{ 'good' if mechanic.status == 'approved' else 'warn' }}">{{ mechanic.status|nice_status }}</span>
+</div>
+
+<div class="split">
+  <div class="card">
+    <form method="post">
+  {{ csrf_field() }}
+      <fieldset>
+        <legend>Business</legend>
+        <div class="field">
+          <label for="business_name">Business name</label>
+          <input type="text" id="business_name" name="business_name" value="{{ mechanic.business_name }}" required>
+        </div>
+        <div class="field">
+          <label for="specialties">Specialties</label>
+          <input type="text" id="specialties" name="specialties" value="{{ mechanic.specialties }}">
+          <div class="help">Comma-separated, e.g. “Engine, brakes, electrical”.</div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="city">City</label>
+            <input type="text" id="city" name="city" value="{{ mechanic.city }}" required>
+          </div>
+          <div class="field">
+            <label for="hourly_rate">Hourly rate ({{ currency }})</label>
+            <input type="number" id="hourly_rate" name="hourly_rate" step="100" min="0"
+                   value="{{ mechanic.hourly_rate|round|int if mechanic.hourly_rate is not none else '' }}">
+          </div>
+        </div>
+        <div class="field">
+          <label for="address">Workshop address</label>
+          <input type="text" id="address" name="address" value="{{ mechanic.address or '' }}">
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Base location</legend>
+        <div class="field-row">
+          <div class="field">
+            <label for="lat">Latitude</label>
+            <input type="number" step="any" id="lat" name="latitude" value="{{ mechanic.latitude }}">
+          </div>
+          <div class="field">
+            <label for="lng">Longitude</label>
+            <input type="number" step="any" id="lng" name="longitude" value="{{ mechanic.longitude }}">
+          </div>
+        </div>
+        <p class="help">Change your service radius on the <a href="{{ url_for('mechanic.availability') }}">availability page</a>.</p>
+      </fieldset>
+
+      <fieldset>
+        <legend>Contact</legend>
+        <div class="field-row">
+          <div class="field">
+            <label for="full_name">Contact name</label>
+            <input type="text" id="full_name" name="full_name" value="{{ current_user.full_name }}">
+          </div>
+          <div class="field">
+            <label for="phone">Phone</label>
+            <input type="tel" id="phone" name="phone" value="{{ current_user.phone or '' }}">
+          </div>
+        </div>
+        <div class="help">Email: {{ current_user.email }}</div>
+      </fieldset>
+
+      <button class="btn" type="submit">Save profile</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Preview as a driver</h2>
+    <div class="listing">
+      <div class="main">
+        <div class="title">{{ mechanic.business_name }}</div>
+        <div class="meta">{{ mechanic.specialties }} · {{ mechanic.city }}
+          {% if mechanic.hourly_rate %}· {{ mechanic.hourly_rate|money }}/hr{% endif %}</div>
+        <div class="tags">
+          <span class="badge {{ 'good' if mechanic.available else 'warn' }}">
+            {{ 'Available now' if mechanic.available else 'Not accepting jobs' }}
+          </span>
+          <span class="badge info">Covers {{ mechanic.service_radius_km|round|int }} km</span>
+        </div>
+      </div>
+    </div>
+    <table class="mt-2">
+      <tr><th>Status</th><td>{{ mechanic.status|nice_status }}</td></tr>
+      <tr><th>Requests received</th><td>{{ stats.total }}</td></tr>
+      <tr><th>Completed</th><td>{{ stats.completed }}</td></tr>
+      <tr><th>Active</th><td>{{ stats.active }}</td></tr>
+      <tr><th>Base coordinates</th><td class="mono">{{ '%.5f'|format(mechanic.latitude) }}, {{ '%.5f'|format(mechanic.longitude) }}</td></tr>
+    </table>
+  </div>
+</div>
+{% endblock %}
