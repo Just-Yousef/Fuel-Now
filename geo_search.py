@@ -37,7 +37,7 @@ DEFAULT_PROVIDER = "https://photon.komoot.io/api/"
 DEFAULT_REVERSE_PROVIDER = "https://photon.komoot.io/reverse"
 # Photon asks clients to identify themselves; also gives them someone to email
 # if traffic ever becomes a problem.
-USER_AGENT = "FuelNow/1.0 (demo app; +https://github.com/)"
+USER_AGENT = "Veyro/1.0 (demo app; +https://github.com/)"
 REQUEST_TIMEOUT = 4  # seconds; the UI degrades to "no suggestions"
 
 MIN_QUERY_LEN = 2

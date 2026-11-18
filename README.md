@@ -1,4 +1,4 @@
-# FuelNow — fuel delivery & roadside mechanic matching
+# Veyro — fuel delivery & roadside mechanic matching
 
 A four-role web application: **drivers** order fuel from nearby stations and request
 nearby mechanics; **station operators** work the order queue and manage prices;

@@ -55,7 +55,7 @@ def _send_verification(user) -> str:
         return link
     return link if _send_email(
         user,
-        "Verify your FuelNow account",
+        "Verify your Veyro account",
         f"Open this link to verify your email address:\n\n{link}",
     ) else ""
 
@@ -229,7 +229,7 @@ def register():
 
         token = session_tokens.login_with_token(user)
         auth_utils.pin_session()
-        flash(f"Welcome to FuelNow, {user.full_name}!", "success")
+        flash(f"Welcome to Veyro, {user.full_name}!", "success")
 
         if not user.email_verified:
             return session_tokens.redirect_with_token("auth.verify_notice", token)
@@ -537,7 +537,7 @@ def forgot_password():
             if current_app.config.get("MAIL_SERVER"):
                 _send_email(
                     user,
-                    "Reset your FuelNow password",
+                    "Reset your Veyro password",
                     f"Open this link to reset your password:\n\n{link}",
                 )
             elif current_app.config["SHOW_VERIFICATION_LINK"]:

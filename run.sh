@@ -17,5 +17,5 @@ if [ ! -s instance/fuelnow.sqlite3 ]; then
   flask seed-db --reset
 fi
 
-echo "Starting FuelNow on http://127.0.0.1:5000 (Ctrl+C to stop)"
+echo "Starting Veyro on http://127.0.0.1:5000 (Ctrl+C to stop)"
 flask run --debug

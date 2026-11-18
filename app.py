@@ -183,7 +183,7 @@ def create_app(config_name: str | None = None) -> Flask:
             "role_labels": ROLE_LABELS,
             "status_labels": STATUS_LABELS,
             "currency": app.config["DEFAULT_CURRENCY"],
-            "app_name": "FuelNow",
+            "app_name": "Veyro",
         }
 
     @app.template_filter("money")
@@ -248,7 +248,7 @@ def create_app(config_name: str | None = None) -> Flask:
     _check_production_safety(app)
 
     app.logger.info(
-        "FuelNow started — env=%s debug=%s cookie_less=%s",
+        "Veyro started — env=%s debug=%s cookie_less=%s",
         config_name,
         app.debug,
         app.config.get("COOKIE_LESS_SESSIONS"),

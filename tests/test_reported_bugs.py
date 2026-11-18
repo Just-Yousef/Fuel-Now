@@ -165,7 +165,7 @@ def test_configured_smtp_sends_verification_and_password_reset(app, client, monk
     )
     assert registration.status_code == 200
     assert len(messages) == 1
-    assert messages[0]["Subject"] == "Verify your FuelNow account"
+    assert messages[0]["Subject"] == "Verify your Veyro account"
     assert "verify?token=" in messages[0].get_payload()
 
     reset = client.post(
@@ -175,7 +175,7 @@ def test_configured_smtp_sends_verification_and_password_reset(app, client, monk
     )
     assert reset.status_code == 200
     assert len(messages) == 2
-    assert messages[1]["Subject"] == "Reset your FuelNow password"
+    assert messages[1]["Subject"] == "Reset your Veyro password"
     assert "reset-password?token=" in messages[1].get_payload()
 
 

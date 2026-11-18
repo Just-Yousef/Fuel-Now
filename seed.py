@@ -1,4 +1,4 @@
-"""Demo data for FuelNow.
+"""Demo data for Veyro.
 
 Coordinates are real-ish points around Abuja (FCT, Nigeria) so that distance
 sorting produces sensible results. One station is deliberately placed in Lagos

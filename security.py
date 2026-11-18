@@ -224,8 +224,8 @@ def totp_uri(secret: str, email: str) -> str:
     """Return an otpauth URI for manual or QR authenticator enrollment."""
     import urllib.parse
 
-    label = urllib.parse.quote(f"FuelNow:{email}")
-    issuer = urllib.parse.quote("FuelNow")
+    label = urllib.parse.quote(f"Veyro:{email}")
+    issuer = urllib.parse.quote("Veyro")
     return f"otpauth://totp/{label}?secret={secret}&issuer={issuer}&digits=6&period=30"
 
 
