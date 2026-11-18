@@ -898,6 +898,41 @@ def test_places_endpoint_is_rate_limited(client, monkeypatch):
     assert 429 in codes, f"expected throttling, got {codes}"
 
 
+def test_login_attempts_are_throttled(app, client):
+    make_user(email="throttle@example.com", role="driver")
+
+    responses = [
+        client.post(
+            "/login",
+            data={"email": "throttle@example.com", "password": "WrongPassword!1"},
+        )
+        for _ in range(6)
+    ]
+    assert 429 in [response.status_code for response in responses]
+
+
+def test_idempotency_token_is_single_use(app):
+    import re
+
+    with app.test_request_context("/driver/stations"):
+        from flask import session
+
+        field = str(security.idempotency_token_field())
+        match = re.search(r'value="([^"]+)"', field)
+        assert match
+        token = match.group(1)
+        assert security.consume_idempotency_token(token)
+        assert not security.consume_idempotency_token(token)
+
+
+def test_submit_buttons_are_guarded_in_shared_javascript():
+    from pathlib import Path
+
+    js = Path("static/js/app.js").read_text()
+    assert "initSubmitGuards" in js
+    assert "submit.disabled = true" in js
+
+
 def test_places_endpoint_survives_a_provider_outage(client, monkeypatch):
     """A dead provider yields an empty list, never a 500."""
     import geo_search

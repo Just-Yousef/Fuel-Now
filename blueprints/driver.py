@@ -214,6 +214,9 @@ def save_location():
 @role_required(ROLE_DRIVER)
 def place_order():
     form = request.form
+    if not security.consume_idempotency_token(form.get("idempotency_token")):
+        flash("This order may already have been submitted.", "warning")
+        return redirect(url_for("driver.orders"))
     station_id = form.get("station_id", type=int)
     fuel_type = (form.get("fuel_type") or "").strip()
     litres_raw = form.get("quantity_litres")
@@ -330,6 +333,9 @@ def cancel_order(order_id: int):
 @role_required(ROLE_DRIVER)
 def create_request():
     form = request.form
+    if not security.consume_idempotency_token(form.get("idempotency_token")):
+        flash("This mechanic request may already have been submitted.", "warning")
+        return redirect(url_for("driver.requests_view"))
     mechanic_id = form.get("mechanic_id", type=int)
     back_to = session_tokens.safe_next(form.get("next")) or url_for("driver.mechanics")
     try:

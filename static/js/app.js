@@ -573,8 +573,20 @@
     });
   }
 
+  function initSubmitGuards() {
+    document.querySelectorAll("form").forEach(function (form) {
+      form.addEventListener("submit", function () {
+        var submit = form.querySelector('[type="submit"]');
+        if (!submit || submit.disabled) return;
+        submit.disabled = true;
+        window.setTimeout(function () { submit.disabled = false; }, 1500);
+      });
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
     initPasswordToggles();
+    initSubmitGuards();
     initGeoLocate();
     initFormGeolocate();
     PlaceSearch.init();

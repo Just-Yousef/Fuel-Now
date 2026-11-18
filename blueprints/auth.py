@@ -249,11 +249,20 @@ def login():
         try:
             email = security.validate_email(request.form.get("email"))
         except security.FieldError:
-            # Deliberately vague: never reveal whether an address exists.
+            throttle_key = f"login-invalid:{request.remote_addr or 'unknown'}"
+            if not security.login_attempt_allowed(throttle_key):
+                flash("Too many sign-in attempts. Try again later.", "error")
+                return render_template("auth/login.html", email=""), 429
+            security.record_login_failure(throttle_key)
             flash("Invalid email or password.", "error")
             return render_template("auth/login.html", email=""), 401
 
         password = request.form.get("password") or ""
+        throttle_key = f"login:{security.fingerprint(email)}:{request.remote_addr or 'unknown'}"
+        if not security.login_attempt_allowed(throttle_key):
+            flash("Too many sign-in attempts. Try again later.", "error")
+            return render_template("auth/login.html", email=email), 429
+
         user = User.query.filter_by(email=email).first()
 
         # Uniform failure path for unknown user / bad password.
@@ -263,10 +272,12 @@ def login():
                 security.fingerprint(email),
                 request.remote_addr,
             )
+            security.record_login_failure(throttle_key)
             flash("Invalid email or password.", "error")
             return render_template("auth/login.html", email=email), 401
 
         if user.status == "deactivated" or not user.is_active:
+            security.record_login_failure(throttle_key)
             flash("This account has been deactivated. Please contact support.", "error")
             return render_template("auth/login.html", email=email), 403
 
@@ -275,6 +286,7 @@ def login():
             user.set_password(password)
             db.session.commit()
 
+        security.reset_login_attempts(throttle_key)
         login_user(user, remember=bool(request.form.get("remember")))
         auth_utils.pin_session()
 
@@ -303,10 +315,20 @@ def admin_login():
         try:
             email = security.validate_email(request.form.get("email"))
         except security.FieldError:
+            throttle_key = f"admin-login-invalid:{request.remote_addr or 'unknown'}"
+            if not security.login_attempt_allowed(throttle_key):
+                flash("Too many sign-in attempts. Try again later.", "error")
+                return render_template("auth/admin_login.html", email=""), 429
+            security.record_login_failure(throttle_key)
             flash("Invalid email or password.", "error")
             return render_template("auth/admin_login.html", email=""), 401
 
         password = request.form.get("password") or ""
+        throttle_key = f"admin-login:{security.fingerprint(email)}:{request.remote_addr or 'unknown'}"
+        if not security.login_attempt_allowed(throttle_key):
+            flash("Too many sign-in attempts. Try again later.", "error")
+            return render_template("auth/admin_login.html", email=email), 429
+
         user = User.query.filter_by(email=email).first()
 
         if user is None or not user.check_password(password):
@@ -315,14 +337,17 @@ def admin_login():
                 security.fingerprint(email),
                 request.remote_addr,
             )
+            security.record_login_failure(throttle_key)
             flash("Invalid email or password.", "error")
             return render_template("auth/admin_login.html", email=email), 401
 
         if user.status == "deactivated" or not user.is_active:
+            security.record_login_failure(throttle_key)
             flash("This account has been deactivated. Please contact support.", "error")
             return render_template("auth/admin_login.html", email=email), 403
 
         if user.role != ROLE_ADMIN:
+            security.record_login_failure(throttle_key)
             flash("This sign-in page is for administrators only.", "error")
             return render_template("auth/admin_login.html", email=email), 403
 
@@ -330,6 +355,7 @@ def admin_login():
             user.set_password(password)
             db.session.commit()
 
+        security.reset_login_attempts(throttle_key)
         login_user(user, remember=bool(request.form.get("remember")))
         auth_utils.pin_session()
 

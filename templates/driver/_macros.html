@@ -45,6 +45,7 @@
           <summary class="btn small secondary" style="display:inline-flex">Order fuel here</summary>
           <form method="post" action="{{ url_for('driver.place_order') }}" class="mt-2" data-order-form>
   {{ csrf_field() }}
+  {{ idempotency_field() }}
             <input type="hidden" name="station_id" value="{{ station.id }}">
             <input type="hidden" name="next" value="{{ request.full_path }}">
             {% if origin %}
@@ -115,6 +116,7 @@
           <summary class="btn small secondary" style="display:inline-flex">Request this mechanic</summary>
           <form method="post" action="{{ url_for('driver.create_request') }}" class="mt-2">
   {{ csrf_field() }}
+  {{ idempotency_field() }}
             <input type="hidden" name="mechanic_id" value="{{ mechanic.id }}">
             <input type="hidden" name="next" value="{{ request.full_path }}">
             <input type="hidden" name="lat" value="{{ '%.6f'|format(origin.latitude) }}">

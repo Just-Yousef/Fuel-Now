@@ -9,6 +9,8 @@ import hashlib
 import hmac
 import re
 import secrets
+import threading
+import time
 from functools import wraps
 
 from flask import (
@@ -28,6 +30,17 @@ CSRF_TOKEN_TTL = 60 * 60 * 12  # 12 hours
 CSRF_FORM_FIELD = "csrf_token"
 CSRF_HEADER = "X-CSRF-Token"
 CSRF_SAFE_METHODS = {"GET", "HEAD", "OPTIONS", "TRACE"}
+
+# Login throttling. This protects a single app process from brute force; production
+# deployments with multiple workers should move this state to a shared store.
+LOGIN_ATTEMPT_WINDOW_SECONDS = 15 * 60
+LOGIN_ATTEMPT_MAX_FAILURES = 5
+_login_attempts: dict[str, list[float]] = {}
+_login_attempts_lock = threading.Lock()
+
+# Submission idempotency.
+IDEMPOTENCY_SESSION_KEY = "_idempotency_tokens"
+
 # Endpoints that authenticate by signature or are machine-to-machine.
 CSRF_EXEMPT_ENDPOINTS = {"webhooks.receive"}
 
@@ -152,6 +165,51 @@ def csrf_token_field() -> Markup:
     return Markup(
         f'<input type="hidden" name="{CSRF_FORM_FIELD}" value="{get_csrf_token()}">'
     )
+
+
+def login_attempt_allowed(key: str) -> bool:
+    now = time.monotonic()
+    with _login_attempts_lock:
+        stamps = [stamp for stamp in _login_attempts.get(key, [])
+                  if now - stamp < LOGIN_ATTEMPT_WINDOW_SECONDS]
+        _login_attempts[key] = stamps
+        return len(stamps) < LOGIN_ATTEMPT_MAX_FAILURES
+
+
+def record_login_failure(key: str) -> None:
+    with _login_attempts_lock:
+        stamps = _login_attempts.setdefault(key, [])
+        stamps.append(time.monotonic())
+        if len(stamps) > LOGIN_ATTEMPT_MAX_FAILURES:
+            stamps[:] = stamps[-LOGIN_ATTEMPT_MAX_FAILURES:]
+
+
+def reset_login_attempts(key: str) -> None:
+    with _login_attempts_lock:
+        _login_attempts.pop(key, None)
+
+
+def idempotency_token_field() -> Markup:
+    """Mint a hidden, session-bound token for state-changing forms."""
+    token = secrets.token_urlsafe(24)
+    tokens = session.setdefault(IDEMPOTENCY_SESSION_KEY, [])
+    tokens.append(token)
+    session[IDEMPOTENCY_SESSION_KEY] = tokens[-128:]  # bound session memory
+    return Markup(
+        f'<input type="hidden" name="idempotency_token" value="{token}">'
+    )
+
+
+def consume_idempotency_token(raw_token: str | None) -> bool:
+    """Consume a submitted token once; missing tokens preserve API compatibility."""
+    if not raw_token:
+        return True
+    tokens = session.setdefault(IDEMPOTENCY_SESSION_KEY, [])
+    if raw_token not in tokens:
+        return False
+    tokens.remove(raw_token)
+    session[IDEMPOTENCY_SESSION_KEY] = tokens
+    return True
 
 
 # --------------------------------------------------------------------------- #
@@ -400,4 +458,5 @@ def init_app(app) -> None:
 
     app.jinja_env.globals["csrf_token"] = get_csrf_token
     app.jinja_env.globals["csrf_field"] = csrf_token_field
+    app.jinja_env.globals["idempotency_field"] = idempotency_token_field
     app.jinja_env.globals["csp_nonce"] = csp_nonce
