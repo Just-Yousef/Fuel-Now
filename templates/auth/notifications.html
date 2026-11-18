@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Notifications · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Notifications</h1>
+    <p class="lede">Updates for your orders and service requests.</p>
+  </div>
+  {% if notifications %}
+  <form method="post" action="{{ url_for('auth.mark_notifications_read') }}">
+    {{ csrf_field() }}
+    <button class="btn small secondary" type="submit">Mark all read</button>
+  </form>
+  {% endif %}
+</div>
+
+{% if notifications %}
+<div class="card">
+  {% for notification in notifications %}
+    <div class="notification-row {% if not notification.is_read %}unread{% endif %}">
+      <div>
+        <b>{{ notification.title }}</b>
+        <p class="muted mb-0" style="font-size:.88rem">{{ notification.message }}</p>
+      </div>
+      <div class="right muted" style="font-size:.78rem">
+        {{ notification.created_at|short_dt }}
+        {% if notification.link %}<br><a href="{{ notification.link }}">View</a>{% endif %}
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card"><p class="table-empty">No notifications yet.</p></div>
+{% endif %}
+{% endblock %}

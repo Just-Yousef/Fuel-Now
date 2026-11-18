@@ -33,6 +33,7 @@ from models import (
     STATUS_PENDING,
     Mechanic,
     Station,
+    Notification,
     User,
     utcnow,
 )
@@ -435,6 +436,28 @@ def admin_totp_verify():
         return session_tokens.redirect_with_token("admin.dashboard", token)
 
     return render_template("auth/admin_totp_verify.html", email=user.email)
+
+
+@auth_bp.get("/notifications")
+@login_required
+def notifications():
+    rows = (
+        Notification.query.filter_by(recipient_id=current_user.id)
+        .order_by(Notification.created_at.desc())
+        .limit(100)
+        .all()
+    )
+    return render_template("auth/notifications.html", notifications=rows)
+
+
+@auth_bp.post("/notifications/read")
+@login_required
+def mark_notifications_read():
+    Notification.query.filter_by(recipient_id=current_user.id, is_read=False).update(
+        {Notification.is_read: True}
+    )
+    db.session.commit()
+    return redirect(url_for("auth.notifications"))
 
 
 @auth_bp.post("/logout")

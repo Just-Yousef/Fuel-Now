@@ -66,6 +66,7 @@
             {% for endpoint, label, match in nav_items %}
               <a href="{{ url_for(endpoint) }}" data-match="{{ match }}">{{ label }}</a>
             {% endfor %}
+            <a href="{{ url_for('auth.notifications') }}" data-match="/notifications">Notifications</a>
           </div>
           <div class="nav-profile">
             <a class="account-link" href="{{ url_for('auth.account') }}" data-match="/account">

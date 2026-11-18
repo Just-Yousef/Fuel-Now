@@ -43,6 +43,7 @@ from models import (
     STATUS_PENDING,
     FuelOrder,
     FuelProduct,
+    Notification,
     Station,
     utcnow,
 )
@@ -150,6 +151,12 @@ def update_order_status(order_id: int):
 
     order.status = new_status
     order.updated_at = utcnow()
+    db.session.add(Notification(
+        recipient_id=order.driver_id,
+        title="Fuel order updated",
+        message=f"Order {order.reference} is now {order.status_label}.",
+        link=url_for("driver.orders"),
+    ))
     db.session.commit()
     flash(
         f"Order {order.reference} is now “{order.status_label}”.", "success"

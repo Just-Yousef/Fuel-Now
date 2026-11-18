@@ -396,6 +396,16 @@ tbody tr:hover { background: rgba(255, 255, 255, 0.022); }
 td { color: var(--ink); }
 td.actions { white-space: nowrap; }
 .table-empty { padding: 1.4rem; text-align: center; color: var(--muted); font-style: italic; }
+.notification-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .85rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.notification-row:first-child { padding-top: 0; }
+.notification-row:last-child { border-bottom: 0; padding-bottom: 0; }
+.notification-row.unread { border-left: 3px solid var(--brass); padding-left: .75rem; }
 
 /* --------------------------------------------------------------- badges */
 .badge {

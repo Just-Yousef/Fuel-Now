@@ -1,6 +1,6 @@
 """Core flow: a driver places a fuel order and a station moves it along."""
 from extensions import db
-from models import FuelOrder, FuelProduct, StationReview
+from models import FuelOrder, FuelProduct, Notification, StationReview
 from tests.conftest import (
     DRIVER_LAT,
     DRIVER_LNG,
@@ -148,6 +148,43 @@ def test_order_rejected_for_unapproved_station(app, client, driver):
     assert b"not available for orders" in response.data
     with app.app_context():
         assert FuelOrder.query.count() == 0
+
+
+def test_order_status_creates_driver_notification(app, client, driver):
+    with app.app_context():
+        station = make_station(owner_email="notify-station@example.com")
+        station_id = station.id
+
+    login(client, driver.email)
+    place_order(client, station_id)
+
+    with app.app_context():
+        order = FuelOrder.query.one()
+        order_id = order.id
+
+    client.post("/logout")
+    login(client, "notify-station@example.com")
+    response = client.post(
+        f"/station/orders/{order_id}/status",
+        data={"status": "accepted"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+
+    with app.app_context():
+        notification = Notification.query.filter_by(recipient_id=driver.id).one()
+        assert notification.title == "Fuel order updated"
+        assert not notification.is_read
+        assert "accepted" in notification.message.lower()
+
+    client.post("/logout")
+    login(client, driver.email)
+    marked = client.post("/notifications/read", follow_redirects=True)
+    assert marked.status_code == 200
+
+    with app.app_context():
+        notification = Notification.query.filter_by(recipient_id=driver.id).one()
+        assert notification.is_read
 
 
 def test_completed_order_can_be_reviewed_once(app, client, driver):

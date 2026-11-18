@@ -30,6 +30,7 @@ from models import (
     ROLE_MECHANIC,
     STATUS_APPROVED,
     Mechanic,
+    Notification,
     ServiceRequest,
     utcnow,
 )
@@ -189,6 +190,12 @@ def update_request_status(request_id: int):
 
     service_request.status = new_status
     service_request.updated_at = utcnow()
+    db.session.add(Notification(
+        recipient_id=service_request.driver_id,
+        title="Mechanic request updated",
+        message=f"Request {service_request.reference} is now {service_request.status_label}.",
+        link=url_for("driver.requests_view"),
+    ))
     db.session.commit()
     flash(
         f"Request {service_request.reference} is now “{service_request.status_label}”.",

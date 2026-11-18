@@ -173,6 +173,9 @@ class User(UserMixin, db.Model):
     mechanic = db.relationship(
         "Mechanic", back_populates="user", uselist=False, cascade="all, delete-orphan"
     )
+    notifications = db.relationship(
+        "Notification", back_populates="recipient", cascade="all, delete-orphan", order_by="Notification.created_at.desc()"
+    )
 
     # Flask-Login override: a deactivated account is simply not "active".
     @property
@@ -445,6 +448,20 @@ class StationReview(db.Model):
     order = db.relationship("FuelOrder", back_populates="review")
     station = db.relationship("Station", back_populates="reviews")
     driver = db.relationship("User", foreign_keys=[driver_id])
+
+
+class Notification(db.Model):
+    __tablename__ = "notifications"
+
+    id = db.Column(db.Integer, primary_key=True)
+    recipient_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    title = db.Column(db.String(120), nullable=False)
+    message = db.Column(db.String(500), nullable=False)
+    link = db.Column(db.String(255))
+    is_read = db.Column(db.Boolean, nullable=False, default=False, index=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=utcnow, index=True)
+
+    recipient = db.relationship("User", back_populates="notifications")
 
 
 class MechanicReview(db.Model):
